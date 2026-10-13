@@ -30,7 +30,26 @@ async function executeTaskHandler(type, input = {}, context = {}) {
     );
   }
 
-  return handler(input, context);
+  const timeoutMs = input.timeoutMs || context.timeoutMs || 30000;
+
+  let timerId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timerId = setTimeout(() => {
+      const err = new Error(`Task execution timed out after ${timeoutMs}ms`);
+      err.code = 'TASK_TIMEOUT';
+      reject(err);
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([
+      handler(input, context),
+      timeoutPromise
+    ]);
+    return result;
+  } finally {
+    clearTimeout(timerId);
+  }
 }
 
 module.exports = {

@@ -206,6 +206,47 @@ export function TaskModal({ isOpen, onClose, onSave, existingTask, allTasks = []
             )}
           </div>
 
+          {/* Quick Presets for Simulated Tasks */}
+          {type === 'simulated' && (
+            <div className="form-group">
+              <label>Failure Injection & Chaos Presets</label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  onClick={() => setRawInput(JSON.stringify({ delayMs: 100, sampleData: { status: 'success' } }, null, 2))}
+                >
+                  Normal (100ms)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  onClick={() => setRawInput(JSON.stringify({ delayMs: 200, failAttempts: 2, failureMessage: 'Transient simulated timeout' }, null, 2))}
+                >
+                  Fail 2x then Succeed
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  onClick={() => setRawInput(JSON.stringify({ simulateTimeout: true, timeoutMs: 1000 }, null, 2))}
+                >
+                  Simulate Timeout (1s)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '3px 8px' }}
+                  onClick={() => setRawInput(JSON.stringify({ shouldFail: true, failureMessage: 'Intentional fatal error' }, null, 2))}
+                >
+                  Fatal Failure
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Raw Input JSON */}
           <div className="form-group">
             <label>Task Payload Input (JSON)</label>

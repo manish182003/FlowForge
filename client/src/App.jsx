@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { StatusBadge } from './components/StatusBadge';
 import { GraphCanvas } from './components/GraphCanvas';
 import { TaskModal } from './components/TaskModal';
+import { ChaosPanel } from './components/ChaosPanel';
 import { LogViewer } from './components/LogViewer';
 import { useWebSocket } from './hooks/useWebSocket';
 import { fetchHealth } from './services/api';
@@ -87,6 +88,7 @@ export function App() {
 
   // Task Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isChaosModalOpen, setIsChaosModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
 
@@ -528,6 +530,13 @@ export function App() {
                       >
                         Delete
                       </button>
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setIsChaosModalOpen(true)}
+                        title="Simulate worker crashes & trigger the Reaper"
+                      >
+                        ⚡ Chaos & Fleet
+                      </button>
                     </div>
                   </div>
 
@@ -675,8 +684,8 @@ export function App() {
                   </div>
                   <div className="stat-card">
                     <span className="stat-label">Module Progress</span>
-                    <span className="stat-value">MODULE 06</span>
-                    <span className="stat-hint">Real-Time Observability</span>
+                    <span className="stat-value">MODULE 07</span>
+                    <span className="stat-hint">Failure Injection & Resilience</span>
                   </div>
                 </div>
               </div>
@@ -726,6 +735,11 @@ export function App() {
                       <td>Real-Time Observability: Native WebSockets, Telemetry Stream, Self-Healing State</td>
                       <td>COMPLETED</td>
                     </tr>
+                    <tr>
+                      <td>07</td>
+                      <td>Failure Injection & Resilience: Execution Watchdog, Worker Reaper, Chaos Controls</td>
+                      <td>COMPLETED</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -746,9 +760,16 @@ export function App() {
         allTasks={selectedWorkflow?.tasks || []}
       />
 
+      {/* Chaos & Fleet Watchdog Modal */}
+      <ChaosPanel
+        isOpen={isChaosModalOpen}
+        onClose={() => setIsChaosModalOpen(false)}
+        onActionLogged={(msg) => showNotification(msg)}
+      />
+
       <footer className="app-footer">
         <span>FlowForge Distributed Scheduler</span>
-        <span>Module 06: Real-Time Observability & WebSockets</span>
+        <span>Module 07: Failure Injection, Worker Recovery & Resilience</span>
       </footer>
     </div>
   );

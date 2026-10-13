@@ -4,6 +4,7 @@ const env = require('./config/env');
 const healthRoutes = require('./routes/health.routes');
 const workflowRoutes = require('./routes/workflow.routes');
 const runRoutes = require('./routes/run.routes');
+const chaosRoutes = require('./routes/chaos.routes');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -26,6 +27,7 @@ function createApp() {
   app.use('/api', healthRoutes);
   app.use('/api', workflowRoutes);
   app.use('/api', runRoutes);
+  app.use('/api', chaosRoutes);
 
   // 404 Handler for unmatched routes
   app.use(notFoundHandler);

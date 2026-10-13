@@ -145,3 +145,4 @@ function broadcastEvent(eventType, payload = {}) {
   - Tests room isolation: confirms subscribers to `run-1` receive events while subscribers to `run-2` do not.
   - Tests error handling on malformed non-JSON payloads.
   - Tests `GET /api/runs/:runId/logs` REST endpoint with chronological ordering.
+

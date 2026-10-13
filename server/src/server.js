@@ -3,6 +3,7 @@ const createApp = require('./app');
 const env = require('./config/env');
 const { connectDB, disconnectDB } = require('./config/db');
 const { initWebSocketServer, closeWebSocketServer } = require('./websocket/wsServer');
+const { startReaper, stopReaper } = require('./scheduler/reaper');
 
 async function startServer() {
   const app = createApp();
@@ -24,6 +25,9 @@ async function startServer() {
   const server = http.createServer(app);
   initWebSocketServer(server);
 
+  // Start Background Reaper Watchdog (10s sweep, 15s lease timeout)
+  startReaper(10000, 15000);
+
   // Start HTTP Listener
   server.listen(env.PORT, () => {
     console.log(`====================================================`);
@@ -38,6 +42,7 @@ async function startServer() {
   const gracefulShutdown = async (signal) => {
     console.log(`\n[Server] Received ${signal}. Starting graceful shutdown...`);
     
+    stopReaper();
     closeWebSocketServer();
     
     server.close(async () => {
