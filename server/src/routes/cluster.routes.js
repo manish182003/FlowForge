@@ -20,3 +20,4 @@ router.post('/cluster/ring/route', clusterController.routeKey);
 router.post('/cluster/ring/simulate', clusterController.simulateMigration);
 
 module.exports = router;
+

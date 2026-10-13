@@ -165,3 +165,4 @@ function computeActualCriticalPath(tasks, topoOrder) {
 3. **SVG DAG Critical Path Overlay (`GraphCanvas.jsx`)**: High-contrast white stroke with directional arrows and `[CRITICAL]` node badges.
 4. **Analytics Dashboard (`AnalyticsDashboard.jsx`)**: Modal with speedup metric cards, critical path sequence chain, and Gantt-style timeline breakdown.
 5. **Full Unit & Integration Test Coverage (`analytics.test.js`)**: All 82 tests pass.
+

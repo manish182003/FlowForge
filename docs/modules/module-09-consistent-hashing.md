@@ -153,3 +153,4 @@ findLowerBoundIndex(targetHash) {
 | `POST` | `/api/cluster/ring/simulate` | Executes side-by-side migration comparison between Consistent Hashing vs Modulo Hashing. |
 | `POST` | `/api/cluster/ring/sync` | Syncs the ring topology with active MongoDB `WorkerHeartbeat` instances. |
 | `POST` | `/api/cluster/ring/reset` | Resets the ring to default demonstration nodes (`worker-alpha`, `beta`, `gamma`). |
+

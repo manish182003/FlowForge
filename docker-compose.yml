@@ -11,6 +11,13 @@ services:
       MONGO_INITDB_DATABASE: flowforge
     volumes:
       - mongo_data:/data/db
+    networks:
+      - flowforge-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7.2-alpine
@@ -20,8 +27,80 @@ services:
       - '6379:6379'
     volumes:
       - redis_data:/data
+    networks:
+      - flowforge-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: flowforge-api
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/flowforge
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CLIENT_URL: http://localhost:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - flowforge-network
+
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: flowforge-worker-1
+    restart: unless-stopped
+    command: ["node", "src/workers/worker.js"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongodb:27017/flowforge
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WORKER_ID: worker-cluster-1
+      WORKER_CONCURRENCY: 4
+      LEASE_TIMEOUT_MS: 15000
+      HEARTBEAT_INTERVAL_MS: 3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-server:
+        condition: service_started
+    networks:
+      - flowforge-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: flowforge-client
+    restart: unless-stopped
+    ports:
+      - '3000:80'
+    depends_on:
+      - api-server
+    networks:
+      - flowforge-network
 
 volumes:
   mongo_data:
   redis_data:
 
+networks:
+  flowforge-network:
+    driver: bridge

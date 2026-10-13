@@ -729,8 +729,8 @@ export function App() {
                   </div>
                   <div className="stat-card">
                     <span className="stat-label">Module Progress</span>
-                    <span className="stat-value">MODULE 09</span>
-                    <span className="stat-hint">Consistent Hashing & Sharding</span>
+                    <span className="stat-value">MODULE 10</span>
+                    <span className="stat-hint">Production & Full Stack (Complete)</span>
                   </div>
                 </div>
               </div>
@@ -795,6 +795,11 @@ export function App() {
                       <td>Consistent Hashing: Hash Ring [0, 2³²-1], Virtual Nodes, lower_bound, Avalanche Simulator</td>
                       <td>COMPLETED</td>
                     </tr>
+                    <tr>
+                      <td>10</td>
+                      <td>Production Readiness: Multi-Container Docker, Nginx Proxy, GitHub Actions CI/CD</td>
+                      <td>COMPLETED</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -839,7 +844,7 @@ export function App() {
 
       <footer className="app-footer">
         <span>FlowForge Distributed Scheduler</span>
-        <span>Module 09: Consistent Hashing & Cluster Sharding</span>
+        <span>Portfolio Complete (Modules 01 – 10)</span>
       </footer>
     </div>
   );
