@@ -1,0 +1,87 @@
+/* FlowForge Strict Monochrome Design System */
+:root {
+  /* Surface & Background */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #121212;
+  --bg-surface: #171717;
+  --bg-elevated: #212121;
+  --bg-highlight: #2a2a2a;
+
+  /* Text & Content */
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-inverse: #0a0a0a;
+
+  /* Borders & Dividers */
+  --border-primary: #2e2e2e;
+  --border-muted: #222222;
+  --border-active: #ffffff;
+
+  /* Focus & Interactive */
+  --focus-ring: #ffffff;
+  --btn-primary-bg: #f5f5f5;
+  --btn-primary-text: #0a0a0a;
+  --btn-primary-hover: #e5e5e5;
+  --btn-secondary-bg: #1c1c1c;
+  --btn-secondary-text: #f5f5f5;
+  --btn-secondary-border: #333333;
+  --btn-secondary-hover: #262626;
+
+  /* Status Indicators (Strict Monochrome Grayscale) */
+  --status-idle: #737373;
+  --status-active-bg: #262626;
+  --status-active-border: #737373;
+  --status-active-text: #ffffff;
+  --status-danger-bg: #1f1f1f;
+  --status-danger-border: #ffffff;
+  --status-danger-text: #f5f5f5;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  
+  --text-xs: 0.75rem;
+  --text-sm: 0.84rem;
+  --text-base: 0.95rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.35rem;
+  --text-2xl: 1.75rem;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Layout */
+  --max-width: 1200px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
