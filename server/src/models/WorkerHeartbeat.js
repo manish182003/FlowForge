@@ -48,3 +48,4 @@ const workerHeartbeatSchema = new mongoose.Schema(
 const WorkerHeartbeat = mongoose.model('WorkerHeartbeat', workerHeartbeatSchema);
 
 module.exports = WorkerHeartbeat;
+

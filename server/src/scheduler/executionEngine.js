@@ -1,6 +1,7 @@
 const Workflow = require('../models/Workflow');
 const WorkflowRun = require('../models/WorkflowRun');
 const TaskRun = require('../models/TaskRun');
+const ExecutionLog = require('../models/ExecutionLog');
 const { 
   TaskState, 
   WorkflowRunState, 
@@ -9,6 +10,35 @@ const {
 } = require('./stateMachine');
 const { detectCycle, findReadyTasks } = require('../algorithms/graph');
 const { enqueueTaskJob } = require('../queue/queueManager');
+const { broadcastEvent } = require('../websocket/wsServer');
+
+/**
+ * Persists an execution log to MongoDB and immediately streams it via WebSockets.
+ */
+async function recordLog(runId, taskId, level, message, details = null) {
+  try {
+    const logDoc = new ExecutionLog({
+      runId,
+      taskId,
+      level,
+      message,
+      details,
+      timestamp: new Date()
+    });
+    await logDoc.save();
+
+    broadcastEvent('LOG_MESSAGE', {
+      runId: runId.toString(),
+      taskId,
+      level,
+      message,
+      details,
+      timestamp: logDoc.timestamp
+    });
+  } catch (_) {
+    // Non-fatal if logging storage has a transient error
+  }
+}
 
 /**
  * Initializes and starts a new Workflow Run.
@@ -74,6 +104,14 @@ async function startWorkflowRun(workflowId, options = {}) {
   workflowRun.status = WorkflowRunState.RUNNING;
   await workflowRun.save();
 
+  broadcastEvent('WORKFLOW_STATE_CHANGED', {
+    runId: workflowRun._id.toString(),
+    status: WorkflowRunState.RUNNING,
+    workflowName: workflowRun.workflowName,
+    totalTasks: workflowRun.totalTasks
+  });
+  await recordLog(workflowRun._id, 'workflow', 'info', `Workflow "${workflowRun.workflowName}" execution started.`);
+
   // 5. Enqueue all initial QUEUED root tasks
   const initialQueuedTasks = createdTaskRuns.filter(tr => tr.status === TaskState.QUEUED);
   for (const taskRun of initialQueuedTasks) {
@@ -88,6 +126,16 @@ async function startWorkflowRun(workflowId, options = {}) {
       attempt: taskRun.attempt,
       maxRetries: taskRun.maxRetries
     });
+
+    broadcastEvent('TASK_STATE_CHANGED', {
+      runId: workflowRun._id.toString(),
+      taskRunId: taskRun._id.toString(),
+      taskId: taskRun.taskId,
+      name: taskRun.name,
+      status: TaskState.QUEUED,
+      priority: taskRun.priority
+    });
+    await recordLog(workflowRun._id, taskRun.taskId, 'info', `Root task "${taskRun.name}" queued for execution.`);
   }
 
   return {
@@ -121,6 +169,17 @@ async function claimTaskForExecution(taskRunId, workerId) {
     { new: true }
   ).lean();
 
+  if (updated) {
+    broadcastEvent('TASK_STATE_CHANGED', {
+      runId: updated.runId.toString(),
+      taskRunId: updated._id.toString(),
+      taskId: updated.taskId,
+      status: TaskState.RUNNING,
+      workerId: updated.workerId
+    });
+    await recordLog(updated.runId, updated.taskId, 'info', `Task claimed by worker "${updated.workerId}".`);
+  }
+
   return updated;
 }
 
@@ -152,6 +211,17 @@ async function handleTaskCompletion(taskRunId, output = {}) {
   taskRun.completedAt = now;
   taskRun.durationMs = durationMs;
   await taskRun.save();
+
+  broadcastEvent('TASK_STATE_CHANGED', {
+    runId: taskRun.runId.toString(),
+    taskRunId: taskRun._id.toString(),
+    taskId: taskRun.taskId,
+    name: taskRun.name,
+    status: TaskState.SUCCEEDED,
+    durationMs,
+    output
+  });
+  await recordLog(taskRun.runId, taskRun.taskId, 'info', `Task "${taskRun.name}" completed successfully in ${durationMs}ms.`, { output });
 
   // Load all tasks for this run to evaluate dependencies
   const allRunTasks = await TaskRun.find({ runId: taskRun.runId });
@@ -192,6 +262,16 @@ async function handleTaskCompletion(taskRunId, output = {}) {
         attempt: targetTask.attempt,
         maxRetries: targetTask.maxRetries
       });
+
+      broadcastEvent('TASK_STATE_CHANGED', {
+        runId: taskRun.runId.toString(),
+        taskRunId: targetTask._id.toString(),
+        taskId: targetTask.taskId,
+        name: targetTask.name,
+        status: TaskState.QUEUED,
+        priority: targetTask.priority
+      });
+      await recordLog(taskRun.runId, targetTask.taskId, 'info', `Prerequisites satisfied. Task "${targetTask.name}" queued.`);
     }
   }
 
@@ -208,6 +288,14 @@ async function handleTaskCompletion(taskRunId, output = {}) {
       workflowRun.durationMs = now.getTime() - workflowRun.startedAt.getTime();
       workflowRun.succeededTasks = allRunTasks.length;
       await workflowRun.save();
+
+      broadcastEvent('WORKFLOW_STATE_CHANGED', {
+        runId: workflowRun._id.toString(),
+        status: WorkflowRunState.SUCCEEDED,
+        durationMs: workflowRun.durationMs,
+        succeededTasks: workflowRun.succeededTasks
+      });
+      await recordLog(workflowRun._id, 'workflow', 'info', `Workflow "${workflowRun.workflowName}" completed successfully in ${workflowRun.durationMs}ms.`);
     }
   }
 
@@ -249,6 +337,19 @@ async function handleTaskFailure(taskRunId, error, isRetryable = true) {
 
     const delayMs = calculateBackoffWithJitter(nextAttempt - 1, taskRun.backoffMs);
 
+    broadcastEvent('TASK_STATE_CHANGED', {
+      runId: taskRun.runId.toString(),
+      taskRunId: taskRun._id.toString(),
+      taskId: taskRun.taskId,
+      name: taskRun.name,
+      status: TaskState.RETRY_WAIT,
+      attempt: nextAttempt,
+      maxRetries: taskRun.maxRetries,
+      delayMs,
+      error: errPayload.message
+    });
+    await recordLog(taskRun.runId, taskRun.taskId, 'warn', `Task "${taskRun.name}" failed (attempt ${nextAttempt}/${taskRun.maxRetries}). Retrying in ${delayMs}ms: ${errPayload.message}`);
+
     // Schedule re-enqueue after backoff
     setTimeout(async () => {
       try {
@@ -268,6 +369,16 @@ async function handleTaskFailure(taskRunId, error, isRetryable = true) {
             attempt: refreshed.attempt,
             maxRetries: refreshed.maxRetries
           });
+
+          broadcastEvent('TASK_STATE_CHANGED', {
+            runId: refreshed.runId.toString(),
+            taskRunId: refreshed._id.toString(),
+            taskId: refreshed.taskId,
+            name: refreshed.name,
+            status: TaskState.QUEUED,
+            attempt: refreshed.attempt
+          });
+          await recordLog(refreshed.runId, refreshed.taskId, 'info', `Retry wait elapsed. Task "${refreshed.name}" re-queued.`);
         }
       } catch (scheduleErr) {
         console.error('[ExecutionEngine] Failed to re-enqueue retried task:', scheduleErr.message);
@@ -288,6 +399,16 @@ async function handleTaskFailure(taskRunId, error, isRetryable = true) {
   }
   await taskRun.save();
 
+  broadcastEvent('TASK_STATE_CHANGED', {
+    runId: taskRun.runId.toString(),
+    taskRunId: taskRun._id.toString(),
+    taskId: taskRun.taskId,
+    name: taskRun.name,
+    status: TaskState.FAILED,
+    error: errPayload.message
+  });
+  await recordLog(taskRun.runId, taskRun.taskId, 'error', `Task "${taskRun.name}" permanently failed after exhausting retries: ${errPayload.message}`);
+
   // Cancel downstream tasks that depended on this failed task
   const allRunTasks = await TaskRun.find({ runId: taskRun.runId });
   const failedTaskId = taskRun.taskId;
@@ -297,6 +418,16 @@ async function handleTaskFailure(taskRunId, error, isRetryable = true) {
       otherTask.status = TaskState.CANCELLED;
       otherTask.error = { message: `Cancelled due to upstream prerequisite failure in: ${failedTaskId}` };
       await otherTask.save();
+
+      broadcastEvent('TASK_STATE_CHANGED', {
+        runId: otherTask.runId.toString(),
+        taskRunId: otherTask._id.toString(),
+        taskId: otherTask.taskId,
+        name: otherTask.name,
+        status: TaskState.CANCELLED,
+        error: otherTask.error.message
+      });
+      await recordLog(otherTask.runId, otherTask.taskId, 'warn', otherTask.error.message);
     }
   }
 
@@ -308,6 +439,14 @@ async function handleTaskFailure(taskRunId, error, isRetryable = true) {
     workflowRun.durationMs = now.getTime() - workflowRun.startedAt.getTime();
     workflowRun.error = `Task "${failedTaskId}" failed: ${errPayload.message}`;
     await workflowRun.save();
+
+    broadcastEvent('WORKFLOW_STATE_CHANGED', {
+      runId: workflowRun._id.toString(),
+      status: WorkflowRunState.FAILED,
+      durationMs: workflowRun.durationMs,
+      error: workflowRun.error
+    });
+    await recordLog(workflowRun._id, 'workflow', 'error', `Workflow run failed: ${workflowRun.error}`);
   }
 
   return taskRun;
@@ -335,20 +474,35 @@ async function cancelWorkflowRun(runId, reason = 'Manually cancelled by user') {
   workflowRun.error = reason;
   await workflowRun.save();
 
+  broadcastEvent('WORKFLOW_STATE_CHANGED', {
+    runId: workflowRun._id.toString(),
+    status: WorkflowRunState.CANCELLED,
+    error: reason
+  });
+  await recordLog(workflowRun._id, 'workflow', 'warn', `Workflow run cancelled: ${reason}`);
+
   // Cancel all non-terminal tasks
-  await TaskRun.updateMany(
-    { 
-      runId, 
-      status: { $in: [TaskState.BLOCKED, TaskState.QUEUED, TaskState.RETRY_WAIT] } 
-    },
-    { 
-      $set: { 
-        status: TaskState.CANCELLED,
-        completedAt: now,
-        error: { message: reason }
-      } 
-    }
-  );
+  const cancelableTasks = await TaskRun.find({
+    runId,
+    status: { $in: [TaskState.BLOCKED, TaskState.QUEUED, TaskState.RETRY_WAIT] }
+  });
+
+  for (const t of cancelableTasks) {
+    t.status = TaskState.CANCELLED;
+    t.completedAt = now;
+    t.error = { message: reason };
+    await t.save();
+
+    broadcastEvent('TASK_STATE_CHANGED', {
+      runId: t.runId.toString(),
+      taskRunId: t._id.toString(),
+      taskId: t.taskId,
+      name: t.name,
+      status: TaskState.CANCELLED,
+      error: reason
+    });
+    await recordLog(t.runId, t.taskId, 'warn', `Task cancelled due to workflow cancellation: ${reason}`);
+  }
 
   return workflowRun;
 }

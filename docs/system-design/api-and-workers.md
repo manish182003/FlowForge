@@ -48,3 +48,4 @@ In a distributed cluster, how do we know if a worker died midway through executi
 1. **Periodic Heartbeats**: Every 10 seconds, each worker updates its record in `WorkerHeartbeat` with `lastHeartbeat: new Date()`.
 2. **Lease Expiration / Reaper**: A scheduler supervisor scans `TaskRun` records in `RUNNING` state. If a task's assigned worker has not posted a heartbeat in 30 seconds, the worker is presumed dead (`OOMKilled` or crashed).
 3. **Re-Enqueueing**: The scheduler transitions the orphaned task back to `QUEUED` so a surviving worker can pick it up.
+

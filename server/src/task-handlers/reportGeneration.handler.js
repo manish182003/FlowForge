@@ -53,3 +53,4 @@ async function reportGenerationHandler(input = {}, context = {}) {
 }
 
 module.exports = { reportGenerationHandler };
+

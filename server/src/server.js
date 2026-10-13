@@ -1,6 +1,8 @@
+const http = require('http');
 const createApp = require('./app');
 const env = require('./config/env');
 const { connectDB, disconnectDB } = require('./config/db');
+const { initWebSocketServer, closeWebSocketServer } = require('./websocket/wsServer');
 
 async function startServer() {
   const app = createApp();
@@ -18,18 +20,25 @@ async function startServer() {
     }
   }
 
+  // Create HTTP Server & Mount WebSocket Telemetry
+  const server = http.createServer(app);
+  initWebSocketServer(server);
+
   // Start HTTP Listener
-  const server = app.listen(env.PORT, () => {
+  server.listen(env.PORT, () => {
     console.log(`====================================================`);
     console.log(`FlowForge API Server running on port ${env.PORT}`);
     console.log(`Environment: ${env.NODE_ENV}`);
     console.log(`Health check: http://localhost:${env.PORT}/api/health`);
+    console.log(`WebSocket: ws://localhost:${env.PORT}/ws`);
     console.log(`====================================================`);
   });
 
   // Graceful Shutdown
   const gracefulShutdown = async (signal) => {
     console.log(`\n[Server] Received ${signal}. Starting graceful shutdown...`);
+    
+    closeWebSocketServer();
     
     server.close(async () => {
       console.log('[Server] HTTP server closed to new connections.');

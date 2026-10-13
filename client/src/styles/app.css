@@ -504,3 +504,250 @@
   gap: var(--space-3);
   margin-top: var(--space-4);
 }
+
+/* ==========================================================================
+   Module 6: Real-Time Observability & Telemetry Log Viewer
+   ========================================================================== */
+.log-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+  background-color: #0c0c0c;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.log-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background-color: #171717;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.log-viewer-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.log-viewer-title {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.ws-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.ws-connected {
+  background-color: #222222;
+  color: #f5f5f5;
+  border: 1px solid #444444;
+}
+
+.ws-disconnected {
+  background-color: #1a1a1a;
+  color: #777777;
+  border: 1px solid #333333;
+}
+
+.ws-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.log-count-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.log-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.log-filter-group {
+  display: flex;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.filter-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.filter-btn:hover {
+  color: var(--text-primary);
+}
+
+.filter-btn-active {
+  background-color: var(--text-primary);
+  color: var(--text-inverse);
+  font-weight: 700;
+}
+
+.task-filter-input {
+  background-color: #0c0c0c;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  width: 140px;
+  outline: none;
+}
+
+.task-filter-input:focus {
+  border-color: var(--border-active);
+}
+
+.auto-scroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-scroll-toggle input {
+  accent-color: var(--text-primary);
+  cursor: pointer;
+}
+
+.clear-logs-btn {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.clear-logs-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.log-viewer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  background-color: #080808;
+}
+
+.log-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+
+.log-time {
+  color: #666666;
+  font-size: 11px;
+}
+
+.log-tag {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.log-tag-info {
+  color: #a3a3a3;
+}
+
+.log-tag-warn {
+  color: #000000;
+  background-color: #e5e5e5;
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.log-tag-error {
+  color: #ffffff;
+  background-color: #262626;
+  border: 1px solid #737373;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: 800;
+}
+
+.log-task {
+  color: #d4d4d4;
+  font-weight: 600;
+}
+
+.log-message {
+  color: #f5f5f5;
+}
+
+.log-details {
+  width: 100%;
+  background-color: #121212;
+  border: 1px solid #262626;
+  padding: var(--space-2) var(--space-3);
+  margin-top: 4px;
+  margin-bottom: 4px;
+  color: #a3a3a3;
+  font-size: 11px;
+  border-radius: 2px;
+  overflow-x: auto;
+}
+
+.log-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666666;
+  font-style: italic;
+  font-size: var(--text-xs);
+}
+
+.empty-state-prompt {
+  color: #ffffff;
+  font-weight: 700;
+  margin-right: 6px;
+}
+

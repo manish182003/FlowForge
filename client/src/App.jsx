@@ -3,6 +3,8 @@ import { Header } from './components/Header';
 import { StatusBadge } from './components/StatusBadge';
 import { GraphCanvas } from './components/GraphCanvas';
 import { TaskModal } from './components/TaskModal';
+import { LogViewer } from './components/LogViewer';
+import { useWebSocket } from './hooks/useWebSocket';
 import { fetchHealth } from './services/api';
 import { 
   fetchWorkflows, 
@@ -12,6 +14,7 @@ import {
   triggerWorkflowRun,
   fetchWorkflowRuns,
   fetchRunSnapshot,
+  fetchRunLogs,
   cancelRun
 } from './services/workflowApi';
 
@@ -89,6 +92,52 @@ export function App() {
 
   const [activeRun, setActiveRun] = useState(null);
   const [runHistory, setRunHistory] = useState([]);
+  const [executionLogs, setExecutionLogs] = useState([]);
+
+  // Module 6: Real-Time WebSocket Telemetry
+  const { isConnected: isWsConnected } = useWebSocket({
+    runId: activeRun?.workflowRun?._id || null,
+    onTaskStateChange: (payload) => {
+      setActiveRun(prev => {
+        if (!prev || !prev.taskRuns) return prev;
+        const updatedTaskRuns = prev.taskRuns.map(tr => {
+          if (tr._id === payload.taskRunId || tr.taskId === payload.taskId) {
+            return { ...tr, ...payload };
+          }
+          return tr;
+        });
+        return { ...prev, taskRuns: updatedTaskRuns };
+      });
+    },
+    onWorkflowStateChange: (payload) => {
+      setActiveRun(prev => {
+        if (!prev || !prev.workflowRun) return prev;
+        return {
+          ...prev,
+          workflowRun: { ...prev.workflowRun, ...payload }
+        };
+      });
+      // Refresh run history status
+      if (selectedWorkflow?._id) {
+        loadRuns(selectedWorkflow._id, false);
+      }
+    },
+    onLogMessage: (payload) => {
+      setExecutionLogs(prev => [...prev, payload]);
+    },
+    onReconnect: async (currentRunId) => {
+      if (currentRunId) {
+        try {
+          const [snapshotRes, logsRes] = await Promise.all([
+            fetchRunSnapshot(currentRunId),
+            fetchRunLogs(currentRunId)
+          ]);
+          setActiveRun(snapshotRes.data);
+          setExecutionLogs(logsRes.data || []);
+        } catch (_) {}
+      }
+    }
+  });
 
   // Fetch health and workflows on mount
   useEffect(() => {
@@ -105,14 +154,16 @@ export function App() {
     }
   };
 
-  const loadRuns = async (workflowId) => {
+  const loadRuns = async (workflowId, selectFirst = true) => {
     if (!workflowId) return;
     try {
       const res = await fetchWorkflowRuns(workflowId);
       setRunHistory(res.data || []);
-      if (res.data?.length > 0 && !activeRun) {
+      if (res.data?.length > 0 && (selectFirst || !activeRun)) {
         const snapshot = await fetchRunSnapshot(res.data[0]._id);
         setActiveRun(snapshot.data);
+        const logsRes = await fetchRunLogs(res.data[0]._id);
+        setExecutionLogs(logsRes.data || []);
       }
     } catch (_) {}
   };
@@ -124,7 +175,7 @@ export function App() {
       setWorkflows(res.data || []);
       if (res.data?.length > 0 && !selectedWorkflow) {
         setSelectedWorkflow(res.data[0]);
-        loadRuns(res.data[0]._id);
+        loadRuns(res.data[0]._id, true);
       }
     } catch (err) {
       setBannerError('Failed to load workflows: ' + err.message);
@@ -133,21 +184,18 @@ export function App() {
     }
   };
 
-  // Poll active run if running
-  useEffect(() => {
-    if (!activeRun?.workflowRun?._id) return;
-    const status = activeRun.workflowRun.status;
-    if (status !== 'RUNNING' && status !== 'PENDING') return;
-
-    const interval = setInterval(async () => {
-      try {
-        const snapshot = await fetchRunSnapshot(activeRun.workflowRun._id);
-        setActiveRun(snapshot.data);
-      } catch (_) {}
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [activeRun?.workflowRun?._id, activeRun?.workflowRun?.status]);
+  const handleSelectRun = async (runId) => {
+    try {
+      const [snapshotRes, logsRes] = await Promise.all([
+        fetchRunSnapshot(runId),
+        fetchRunLogs(runId)
+      ]);
+      setActiveRun(snapshotRes.data);
+      setExecutionLogs(logsRes.data || []);
+    } catch (err) {
+      showError('Failed to load run snapshot: ' + err.message);
+    }
+  };
 
   const handleRunWorkflow = async () => {
     if (!selectedWorkflow?._id) {
@@ -156,10 +204,11 @@ export function App() {
     }
     try {
       setLoading(true);
+      setExecutionLogs([]);
       const res = await triggerWorkflowRun(selectedWorkflow._id);
       setActiveRun(res.data);
       showNotification(`Execution triggered! Run ID: ${res.data.workflowRun._id}`);
-      loadRuns(selectedWorkflow._id);
+      loadRuns(selectedWorkflow._id, false);
     } catch (err) {
       showError('Failed to trigger execution: ' + err.message);
     } finally {
@@ -306,7 +355,7 @@ export function App() {
 
   return (
     <div className="app-container">
-      <Header isHealthy={isServerHealthy} serverStatus={healthData} />
+      <Header isHealthy={isServerHealthy} serverStatus={healthData} wsConnected={isWsConnected} />
 
       <main className="main-content">
         {/* Navigation Tabs */}
@@ -361,6 +410,7 @@ export function App() {
                           onClick={() => {
                             setSelectedWorkflow(wf);
                             setSelectedTaskId(null);
+                            loadRuns(wf._id, true);
                           }}
                         >
                           <div className="workflow-item-name">{wf.name}</div>
@@ -385,6 +435,44 @@ export function App() {
                   </button>
                 </div>
               </div>
+
+              {/* Execution Run History */}
+              {selectedWorkflow?._id && (
+                <div className="panel">
+                  <div className="panel-header">
+                    <span className="panel-title">Run History</span>
+                    <span className="badge badge-default">{runHistory.length}</span>
+                  </div>
+                  <div className="panel-body" style={{ maxHeight: '200px', overflowY: 'auto', padding: '8px' }}>
+                    {runHistory.length === 0 ? (
+                      <div className="empty-hint">No executions recorded yet.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {runHistory.map(run => (
+                          <div
+                            key={run._id}
+                            className={`workflow-list-item ${activeRun?.workflowRun?._id === run._id ? 'selected' : ''}`}
+                            style={{ padding: '6px 8px', cursor: 'pointer' }}
+                            onClick={() => handleSelectRun(run._id)}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontFamily: 'monospace', fontSize: '11px' }}>
+                                #{run._id.slice(-6)}
+                              </span>
+                              <span className={`badge ${run.status === 'SUCCEEDED' ? 'badge-connected' : 'badge-disconnected'}`} style={{ fontSize: '10px', padding: '1px 5px' }}>
+                                {run.status}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#888888', marginTop: '2px' }}>
+                              {new Date(run.startedAt).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </aside>
 
             {/* Main Canvas Workspace */}
@@ -504,6 +592,17 @@ export function App() {
                     </div>
                   )}
 
+                  {/* Real-Time Telemetry & Log Viewer */}
+                  {activeRun && (
+                    <div style={{ borderTop: '1px solid #282828' }}>
+                      <LogViewer 
+                        logs={executionLogs} 
+                        isConnected={isWsConnected} 
+                        onClearLogs={() => setExecutionLogs([])} 
+                      />
+                    </div>
+                  )}
+
                   {/* Selected Task Details Bar */}
                   {selectedTaskId && (
                     <div className="panel-body" style={{ borderTop: '1px solid #222222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -576,8 +675,8 @@ export function App() {
                   </div>
                   <div className="stat-card">
                     <span className="stat-label">Module Progress</span>
-                    <span className="stat-value">MODULE 02</span>
-                    <span className="stat-hint">Workflows & DAG Canvas</span>
+                    <span className="stat-value">MODULE 06</span>
+                    <span className="stat-hint">Real-Time Observability</span>
                   </div>
                 </div>
               </div>
@@ -610,22 +709,22 @@ export function App() {
                     <tr>
                       <td>03</td>
                       <td>Graph Algorithms: Kahn's Topo Sort, Cycle Detection, Heap Scheduling, Critical Path</td>
-                      <td>PENDING</td>
+                      <td>COMPLETED</td>
                     </tr>
                     <tr>
                       <td>04</td>
                       <td>Execution Engine: State Machine, BullMQ, Redis Leases, Idempotency</td>
-                      <td>PENDING</td>
+                      <td>COMPLETED</td>
                     </tr>
                     <tr>
                       <td>05</td>
-                      <td>Distributed Workers: Multi-Process Pool, Heartbeats, Poison Pill Recovery</td>
-                      <td>PENDING</td>
+                      <td>Distributed Workers: Multi-Process Pool, Heartbeats, Sandboxed Handlers</td>
+                      <td>COMPLETED</td>
                     </tr>
                     <tr>
                       <td>06</td>
-                      <td>Real-Time Observability: Native WebSockets, Live Execution Board</td>
-                      <td>PENDING</td>
+                      <td>Real-Time Observability: Native WebSockets, Telemetry Stream, Self-Healing State</td>
+                      <td>COMPLETED</td>
                     </tr>
                   </tbody>
                 </table>
@@ -649,7 +748,7 @@ export function App() {
 
       <footer className="app-footer">
         <span>FlowForge Distributed Scheduler</span>
-        <span>Module 02: Workflow Modeling & Directed Graph Canvas</span>
+        <span>Module 06: Real-Time Observability & WebSockets</span>
       </footer>
     </div>
   );

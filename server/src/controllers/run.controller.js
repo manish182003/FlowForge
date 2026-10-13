@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const WorkflowRun = require('../models/WorkflowRun');
 const TaskRun = require('../models/TaskRun');
+const ExecutionLog = require('../models/ExecutionLog');
 const { startWorkflowRun, cancelWorkflowRun } = require('../scheduler/executionEngine');
 const { getQueueMetrics } = require('../queue/queueManager');
 
@@ -147,10 +148,38 @@ async function getMetrics(req, res, next) {
   }
 }
 
+/**
+ * GET /api/runs/:runId/logs
+ * Retrieves full chronological execution logs for a workflow run.
+ */
+async function getRunLogs(req, res, next) {
+  try {
+    const { runId } = req.params;
+    if (!isValidObjectId(runId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: `Invalid run ID: ${runId}`, code: 'INVALID_ID' }
+      });
+    }
+
+    const logs = await ExecutionLog.find({ runId })
+      .sort({ timestamp: 1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: logs
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   triggerWorkflowRun,
   listWorkflowRuns,
   getRunSnapshot,
+  getRunLogs,
   cancelRun,
   getMetrics
 };

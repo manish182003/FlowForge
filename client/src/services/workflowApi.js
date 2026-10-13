@@ -74,3 +74,9 @@ export async function cancelRun(runId, reason) {
   return handleResponse(res);
 }
 
+export async function fetchRunLogs(runId) {
+  const res = await fetch(`/api/runs/${runId}/logs`);
+  return handleResponse(res);
+}
+
+
