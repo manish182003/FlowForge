@@ -176,3 +176,4 @@ export function ChaosPanel({ isOpen, onClose, onActionLogged }) {
     </div>
   );
 }
+

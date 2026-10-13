@@ -138,3 +138,4 @@ The entire test suite covers:
 - Chaos REST endpoints (`/api/workers`, `/api/chaos/expire-lease`, `/api/chaos/trigger-reaper`).
 
 All **75 tests across 9 test suites** pass cleanly.
+

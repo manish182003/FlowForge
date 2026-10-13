@@ -79,4 +79,9 @@ export async function fetchRunLogs(runId) {
   return handleResponse(res);
 }
 
+export async function fetchRunAnalytics(runId) {
+  const res = await fetch(`/api/runs/${runId}/analytics`);
+  return handleResponse(res);
+}
+
 

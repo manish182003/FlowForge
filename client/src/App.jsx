@@ -4,6 +4,7 @@ import { StatusBadge } from './components/StatusBadge';
 import { GraphCanvas } from './components/GraphCanvas';
 import { TaskModal } from './components/TaskModal';
 import { ChaosPanel } from './components/ChaosPanel';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { LogViewer } from './components/LogViewer';
 import { useWebSocket } from './hooks/useWebSocket';
 import { fetchHealth } from './services/api';
@@ -16,6 +17,7 @@ import {
   fetchWorkflowRuns,
   fetchRunSnapshot,
   fetchRunLogs,
+  fetchRunAnalytics,
   cancelRun
 } from './services/workflowApi';
 
@@ -89,6 +91,9 @@ export function App() {
   // Task Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChaosModalOpen, setIsChaosModalOpen] = useState(false);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
 
@@ -166,6 +171,9 @@ export function App() {
         setActiveRun(snapshot.data);
         const logsRes = await fetchRunLogs(res.data[0]._id);
         setExecutionLogs(logsRes.data || []);
+        fetchRunAnalytics(res.data[0]._id)
+          .then(aRes => setAnalyticsData(aRes.data))
+          .catch(() => setAnalyticsData(null));
       }
     } catch (_) {}
   };
@@ -194,8 +202,26 @@ export function App() {
       ]);
       setActiveRun(snapshotRes.data);
       setExecutionLogs(logsRes.data || []);
+      fetchRunAnalytics(runId)
+        .then(aRes => setAnalyticsData(aRes.data))
+        .catch(() => setAnalyticsData(null));
     } catch (err) {
       showError('Failed to load run snapshot: ' + err.message);
+    }
+  };
+
+  const handleOpenAnalytics = async (runId) => {
+    const targetRunId = runId || activeRun?.workflowRun?._id;
+    if (!targetRunId) return;
+    try {
+      setLoadingAnalytics(true);
+      setIsAnalyticsModalOpen(true);
+      const res = await fetchRunAnalytics(targetRunId);
+      setAnalyticsData(res.data);
+    } catch (err) {
+      showError('Failed to load analytics: ' + err.message);
+    } finally {
+      setLoadingAnalytics(false);
     }
   };
 
@@ -544,6 +570,7 @@ export function App() {
                   <GraphCanvas 
                     tasks={selectedWorkflow.tasks}
                     taskRuns={activeRun?.taskRuns || []}
+                    criticalPath={analyticsData?.criticalPath || []}
                     selectedTaskId={selectedTaskId}
                     onSelectTask={(task) => {
                       setSelectedTaskId(task.taskId);
@@ -555,7 +582,7 @@ export function App() {
                   {/* Active Run Execution Monitor */}
                   {activeRun && (
                     <div className="panel-body" style={{ borderTop: '1px solid #282828', backgroundColor: '#131313' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '0.75rem', color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Run Monitor:
@@ -567,11 +594,20 @@ export function App() {
                             ID: {activeRun.workflowRun?._id}
                           </span>
                         </div>
-                        {activeRun.workflowRun?.status === 'RUNNING' && (
-                          <button className="btn btn-secondary" onClick={handleCancelRun}>
-                            Cancel Run
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            className="btn btn-secondary" 
+                            onClick={() => handleOpenAnalytics()}
+                            title="Inspect makespan, parallel speedup, and critical bottleneck chain"
+                          >
+                            📊 Analytics & Critical Path
                           </button>
-                        )}
+                          {activeRun.workflowRun?.status === 'RUNNING' && (
+                            <button className="btn btn-secondary" onClick={handleCancelRun}>
+                              Cancel Run
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="stats-grid">
@@ -684,8 +720,8 @@ export function App() {
                   </div>
                   <div className="stat-card">
                     <span className="stat-label">Module Progress</span>
-                    <span className="stat-value">MODULE 07</span>
-                    <span className="stat-hint">Failure Injection & Resilience</span>
+                    <span className="stat-value">MODULE 08</span>
+                    <span className="stat-hint">Analytics & Critical Path</span>
                   </div>
                 </div>
               </div>
@@ -740,6 +776,11 @@ export function App() {
                       <td>Failure Injection & Resilience: Execution Watchdog, Worker Reaper, Chaos Controls</td>
                       <td>COMPLETED</td>
                     </tr>
+                    <tr>
+                      <td>08</td>
+                      <td>Execution Analytics: Makespan, Parallel Speedup, Critical Path Highlighting</td>
+                      <td>COMPLETED</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -767,9 +808,18 @@ export function App() {
         onActionLogged={(msg) => showNotification(msg)}
       />
 
+      {/* Execution Analytics & Critical Path Dashboard */}
+      <AnalyticsDashboard
+        isOpen={isAnalyticsModalOpen}
+        onClose={() => setIsAnalyticsModalOpen(false)}
+        analytics={analyticsData}
+        loading={loadingAnalytics}
+        onRefresh={() => handleOpenAnalytics()}
+      />
+
       <footer className="app-footer">
         <span>FlowForge Distributed Scheduler</span>
-        <span>Module 07: Failure Injection, Worker Recovery & Resilience</span>
+        <span>Module 08: Execution Analytics & Critical Path Dashboard</span>
       </footer>
     </div>
   );

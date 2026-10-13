@@ -11,6 +11,7 @@ const NODE_HEIGHT = 74;
 export function GraphCanvas({ 
   tasks = [], 
   taskRuns = [],
+  criticalPath = [],
   onSelectTask, 
   onUpdateTaskPosition, 
   selectedTaskId 
@@ -118,6 +119,19 @@ export function GraphCanvas({
           >
             <path d="M 0 1 L 9 5 L 0 9 z" fill="#888888" />
           </marker>
+
+          {/* Critical Path bottleneck arrow marker */}
+          <marker 
+            id="arrow-critical" 
+            viewBox="0 0 10 10" 
+            refX="9" 
+            refY="5" 
+            markerWidth="7" 
+            markerHeight="7" 
+            orient="auto"
+          >
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="#ffffff" />
+          </marker>
         </defs>
 
         {/* Canvas Background Grid */}
@@ -125,16 +139,24 @@ export function GraphCanvas({
 
         {/* Directed Edges */}
         <g className="edges-layer">
-          {edges.map(edge => (
-            <path
-              key={edge.id}
-              d={edge.pathData}
-              fill="none"
-              stroke="#555555"
-              strokeWidth="1.8"
-              markerEnd="url(#arrow)"
-            />
-          ))}
+          {edges.map(edge => {
+            const isCriticalEdge = criticalPath.length > 1 &&
+              criticalPath.includes(edge.source) &&
+              criticalPath.includes(edge.target) &&
+              criticalPath.indexOf(edge.target) === criticalPath.indexOf(edge.source) + 1;
+
+            return (
+              <path
+                key={edge.id}
+                d={edge.pathData}
+                fill="none"
+                stroke={isCriticalEdge ? '#ffffff' : '#555555'}
+                strokeWidth={isCriticalEdge ? '2.6' : '1.8'}
+                strokeDasharray={isCriticalEdge ? '6 3' : 'none'}
+                markerEnd={isCriticalEdge ? 'url(#arrow-critical)' : 'url(#arrow)'}
+              />
+            );
+          })}
         </g>
 
         {/* Graph Nodes (Tasks) */}
@@ -151,7 +173,11 @@ export function GraphCanvas({
             let strokeWidth = isSelected ? '2' : '1';
             let strokeDasharray = 'none';
 
-            if (status === 'RUNNING') {
+            const isCritical = (criticalPath || []).includes(task.taskId);
+            if (isCritical) {
+              borderColor = '#ffffff';
+              strokeWidth = '2';
+            } else if (status === 'RUNNING') {
               borderColor = '#ffffff';
               strokeWidth = '2';
             } else if (status === 'SUCCEEDED') {
@@ -207,6 +233,16 @@ export function GraphCanvas({
                   >
                     [{status}]
                   </text>
+                )}
+
+                {/* Critical Path Badge */}
+                {isCritical && (
+                  <g transform={`translate(${NODE_WIDTH - 65}, ${NODE_HEIGHT - 17})`}>
+                    <rect width="57" height="12" rx="2" fill="#ffffff" />
+                    <text x="28.5" y="9" fill="#000000" fontSize="8" fontWeight="800" fontFamily="monospace" textAnchor="middle">
+                      CRITICAL
+                    </text>
+                  </g>
                 )}
 
                 {/* Node Title */}

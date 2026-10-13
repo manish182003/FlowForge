@@ -4,6 +4,7 @@ const {
   listWorkflowRuns,
   getRunSnapshot,
   getRunLogs,
+  getRunAnalytics,
   cancelRun,
   getMetrics
 } = require('../controllers/run.controller');
@@ -14,6 +15,7 @@ router.post('/workflows/:id/run', triggerWorkflowRun);
 router.get('/workflows/:id/runs', listWorkflowRuns);
 router.get('/runs/:runId', getRunSnapshot);
 router.get('/runs/:runId/logs', getRunLogs);
+router.get('/runs/:runId/analytics', getRunAnalytics);
 router.post('/runs/:runId/cancel', cancelRun);
 router.get('/queue/metrics', getMetrics);
 
