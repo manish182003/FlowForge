@@ -37,6 +37,23 @@ describe('Module 2: Workflow REST API Endpoints', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error.details[0].message).toContain('does not exist');
     });
+
+    it('should return 400 CYCLE_DETECTED when workflow contains a circular dependency', async () => {
+      const response = await request(app)
+        .post('/api/workflows')
+        .send({
+          name: 'Deadlocked Cyclic Workflow',
+          tasks: [
+            { taskId: 'node_1', name: 'Node 1', type: 'simulated', dependencies: ['node_2'] },
+            { taskId: 'node_2', name: 'Node 2', type: 'simulated', dependencies: ['node_1'] }
+          ]
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('CYCLE_DETECTED');
+      expect(response.body.error.cycleNodes.sort()).toEqual(['node_1', 'node_2']);
+    });
   });
 
   describe('GET /api/workflows/:id Parameter Validation', () => {
@@ -132,3 +149,4 @@ describe('Module 2: Workflow REST API Endpoints', () => {
     });
   });
 });
+

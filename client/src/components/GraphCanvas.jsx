@@ -209,3 +209,4 @@ export function GraphCanvas({ tasks = [], onSelectTask, onUpdateTaskPosition, se
     </div>
   );
 }
+

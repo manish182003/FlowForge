@@ -230,3 +230,4 @@ export function TaskModal({ isOpen, onClose, onSave, existingTask, allTasks = []
     </div>
   );
 }
+

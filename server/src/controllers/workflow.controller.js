@@ -8,10 +8,13 @@ const { workflowCreateSchema, workflowUpdateSchema } = require('../schemas/workf
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
 }
+const { detectCycle, topologicalSort } = require('../algorithms/graph');
+const { calculateCriticalPath } = require('../algorithms/criticalPath');
 
 /**
  * POST /api/workflows
- * Creates a new workflow document after validating task schemas and dependency references.
+ * Creates a new workflow document after validating task schemas, dependency references,
+ * and verifying that the graph is an acyclic DAG.
  */
 async function createWorkflow(req, res, next) {
   try {
@@ -24,6 +27,20 @@ async function createWorkflow(req, res, next) {
           code: 'VALIDATION_ERROR',
           statusCode: 400,
           details: parseResult.error.errors
+        }
+      });
+    }
+
+    // Mathematical cycle check (Kahn's Algorithm)
+    const cycleCheck = detectCycle(parseResult.data.tasks);
+    if (cycleCheck.hasCycle) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: `Dependency cycle detected! Workflow cannot execute in order. Cycle nodes: ${cycleCheck.cycleNodes.join(', ')}`,
+          code: 'CYCLE_DETECTED',
+          statusCode: 400,
+          cycleNodes: cycleCheck.cycleNodes
         }
       });
     }
@@ -212,10 +229,71 @@ async function deleteWorkflow(req, res, next) {
   }
 }
 
+/**
+ * GET /api/workflows/:id/analysis
+ * Runs Module 3 Graph Algorithms on the workflow:
+ * - Cycle Detection
+ * - Kahn's Topological Sort
+ * - Critical Path Analysis
+ */
+async function analyzeWorkflow(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: `Invalid workflow ID format: ${id}`, code: 'INVALID_ID' }
+      });
+    }
+
+    const workflow = await Workflow.findById(id).lean();
+    if (!workflow) {
+      return res.status(404).json({
+        success: false,
+        error: { message: `Workflow not found with ID: ${id}`, code: 'NOT_FOUND' }
+      });
+    }
+
+    const tasks = workflow.tasks || [];
+    const cycleCheck = detectCycle(tasks);
+
+    if (cycleCheck.hasCycle) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          isValidDAG: false,
+          hasCycle: true,
+          cycleNodes: cycleCheck.cycleNodes,
+          topologicalOrder: [],
+          criticalPathAnalysis: null
+        }
+      });
+    }
+
+    const topologicalOrder = topologicalSort(tasks);
+    const criticalPathAnalysis = calculateCriticalPath(tasks);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        isValidDAG: true,
+        hasCycle: false,
+        topologicalOrder,
+        criticalPathAnalysis
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createWorkflow,
   listWorkflows,
   getWorkflowById,
   updateWorkflow,
-  deleteWorkflow
+  deleteWorkflow,
+  analyzeWorkflow
 };
+

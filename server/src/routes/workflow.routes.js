@@ -4,7 +4,8 @@ const {
   listWorkflows,
   getWorkflowById,
   updateWorkflow,
-  deleteWorkflow
+  deleteWorkflow,
+  analyzeWorkflow
 } = require('../controllers/workflow.controller');
 
 const router = express.Router();
@@ -18,4 +19,7 @@ router.route('/workflows/:id')
   .put(updateWorkflow)
   .delete(deleteWorkflow);
 
+router.get('/workflows/:id/analysis', analyzeWorkflow);
+
 module.exports = router;
+

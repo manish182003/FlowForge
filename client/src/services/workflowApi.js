@@ -47,3 +47,4 @@ export async function deleteWorkflow(id) {
   });
   return handleResponse(res);
 }
+

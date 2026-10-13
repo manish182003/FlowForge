@@ -73,3 +73,4 @@ vite build -> dist/assets/index-B-WmRq7q.js (163.48 kB) in 929ms
 
 ## 5. Next Steps
 Module 03 will implement the plain JavaScript **Graph Algorithms** (Adjacency Lists, Kahn's Topological Sort, Cycle Detection, Binary Min/Max Heap for Priority Scheduling, and Critical-Path Dynamic Programming).
+
