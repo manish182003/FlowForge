@@ -111,3 +111,4 @@ function calculateCriticalPath(tasks, durationMap = {}, defaultDuration = 10) {
 }
 
 module.exports = { calculateCriticalPath };
+

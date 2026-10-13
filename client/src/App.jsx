@@ -8,7 +8,11 @@ import {
   fetchWorkflows, 
   createWorkflow, 
   updateWorkflow, 
-  deleteWorkflow 
+  deleteWorkflow,
+  triggerWorkflowRun,
+  fetchWorkflowRuns,
+  fetchRunSnapshot,
+  cancelRun
 } from './services/workflowApi';
 
 // Sample blueprint for quick onboarding and testing
@@ -83,6 +87,9 @@ export function App() {
   const [editingTask, setEditingTask] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
 
+  const [activeRun, setActiveRun] = useState(null);
+  const [runHistory, setRunHistory] = useState([]);
+
   // Fetch health and workflows on mount
   useEffect(() => {
     loadHealth();
@@ -98,6 +105,18 @@ export function App() {
     }
   };
 
+  const loadRuns = async (workflowId) => {
+    if (!workflowId) return;
+    try {
+      const res = await fetchWorkflowRuns(workflowId);
+      setRunHistory(res.data || []);
+      if (res.data?.length > 0 && !activeRun) {
+        const snapshot = await fetchRunSnapshot(res.data[0]._id);
+        setActiveRun(snapshot.data);
+      }
+    } catch (_) {}
+  };
+
   const loadWorkflows = async () => {
     try {
       setLoading(true);
@@ -105,11 +124,58 @@ export function App() {
       setWorkflows(res.data || []);
       if (res.data?.length > 0 && !selectedWorkflow) {
         setSelectedWorkflow(res.data[0]);
+        loadRuns(res.data[0]._id);
       }
     } catch (err) {
       setBannerError('Failed to load workflows: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Poll active run if running
+  useEffect(() => {
+    if (!activeRun?.workflowRun?._id) return;
+    const status = activeRun.workflowRun.status;
+    if (status !== 'RUNNING' && status !== 'PENDING') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const snapshot = await fetchRunSnapshot(activeRun.workflowRun._id);
+        setActiveRun(snapshot.data);
+      } catch (_) {}
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [activeRun?.workflowRun?._id, activeRun?.workflowRun?.status]);
+
+  const handleRunWorkflow = async () => {
+    if (!selectedWorkflow?._id) {
+      showError('Please save the workflow first before executing.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await triggerWorkflowRun(selectedWorkflow._id);
+      setActiveRun(res.data);
+      showNotification(`Execution triggered! Run ID: ${res.data.workflowRun._id}`);
+      loadRuns(selectedWorkflow._id);
+    } catch (err) {
+      showError('Failed to trigger execution: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelRun = async () => {
+    if (!activeRun?.workflowRun?._id) return;
+    try {
+      await cancelRun(activeRun.workflowRun._id, 'Manually cancelled from UI');
+      const snapshot = await fetchRunSnapshot(activeRun.workflowRun._id);
+      setActiveRun(snapshot.data);
+      showNotification('Workflow run cancelled');
+    } catch (err) {
+      showError('Failed to cancel run: ' + err.message);
     }
   };
 
@@ -354,11 +420,19 @@ export function App() {
                         + Add Task
                       </button>
                       <button 
-                        className="btn btn-primary"
+                        className="btn btn-secondary"
                         onClick={handlePersistWorkflow}
                         disabled={loading}
                       >
                         {loading ? 'Saving...' : 'Save Workflow'}
+                      </button>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={handleRunWorkflow}
+                        disabled={loading || !selectedWorkflow._id}
+                        title={!selectedWorkflow._id ? 'Save workflow first' : 'Execute workflow'}
+                      >
+                        ▶ Run Workflow
                       </button>
                       <button 
                         className="btn btn-secondary"
@@ -372,6 +446,7 @@ export function App() {
                   {/* SVG Directed Graph Canvas */}
                   <GraphCanvas 
                     tasks={selectedWorkflow.tasks}
+                    taskRuns={activeRun?.taskRuns || []}
                     selectedTaskId={selectedTaskId}
                     onSelectTask={(task) => {
                       setSelectedTaskId(task.taskId);
@@ -379,6 +454,55 @@ export function App() {
                     }}
                     onUpdateTaskPosition={handleUpdateTaskPosition}
                   />
+
+                  {/* Active Run Execution Monitor */}
+                  {activeRun && (
+                    <div className="panel-body" style={{ borderTop: '1px solid #282828', backgroundColor: '#131313' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Run Monitor:
+                          </span>
+                          <span className={`badge ${activeRun.workflowRun?.status === 'SUCCEEDED' ? 'badge-connected' : 'badge-disconnected'}`}>
+                            {activeRun.workflowRun?.status || 'UNKNOWN'}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#888888' }}>
+                            ID: {activeRun.workflowRun?._id}
+                          </span>
+                        </div>
+                        {activeRun.workflowRun?.status === 'RUNNING' && (
+                          <button className="btn btn-secondary" onClick={handleCancelRun}>
+                            Cancel Run
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="stats-grid">
+                        <div className="stat-card" style={{ padding: '12px' }}>
+                          <span className="stat-label">Total Tasks</span>
+                          <span className="stat-value">{activeRun.taskRuns?.length || 0}</span>
+                        </div>
+                        <div className="stat-card" style={{ padding: '12px' }}>
+                          <span className="stat-label">Succeeded</span>
+                          <span className="stat-value">
+                            {activeRun.taskRuns?.filter(t => t.status === 'SUCCEEDED').length || 0}
+                          </span>
+                        </div>
+                        <div className="stat-card" style={{ padding: '12px' }}>
+                          <span className="stat-label">Queued / Running</span>
+                          <span className="stat-value">
+                            {activeRun.taskRuns?.filter(t => ['QUEUED', 'RUNNING'].includes(t.status)).length || 0}
+                          </span>
+                        </div>
+                        <div className="stat-card" style={{ padding: '12px' }}>
+                          <span className="stat-label">Blocked</span>
+                          <span className="stat-value">
+                            {activeRun.taskRuns?.filter(t => t.status === 'BLOCKED').length || 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Selected Task Details Bar */}
                   {selectedTaskId && (

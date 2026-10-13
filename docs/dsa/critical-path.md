@@ -119,3 +119,4 @@ function calculateCriticalPath(tasks, durationMap = {}, defaultDuration = 10) {
 In distributed systems:
 - If a client complains *"Our pipeline takes 10 minutes to run, can we double our worker count from 4 to 8 to cut time in half?"*
 - You can run **Critical Path Analysis**: If the critical path itself is 9 minutes long, adding 1,000 more workers will only save 1 minute. You must optimize the slowest task on the critical path instead!
+

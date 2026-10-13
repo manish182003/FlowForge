@@ -8,10 +8,20 @@ const NODE_HEIGHT = 74;
  * Renders workflow tasks as DAG nodes connected by directed dependency arrows.
  * Supports dragging nodes to rearrange graph topology.
  */
-export function GraphCanvas({ tasks = [], onSelectTask, onUpdateTaskPosition, selectedTaskId }) {
+export function GraphCanvas({ 
+  tasks = [], 
+  taskRuns = [],
+  onSelectTask, 
+  onUpdateTaskPosition, 
+  selectedTaskId 
+}) {
   const [draggingTask, setDraggingTask] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const svgRef = useRef(null);
+
+  // Map task runs by taskId
+  const taskRunMap = new Map();
+  (taskRuns || []).forEach(tr => taskRunMap.set(tr.taskId, tr));
 
   // Map tasks by taskId for fast coordinate lookup
   const taskMap = new Map();
@@ -134,6 +144,26 @@ export function GraphCanvas({ tasks = [], onSelectTask, onUpdateTaskPosition, se
             const y = task.uiPosition?.y ?? 100;
             const isSelected = selectedTaskId === task.taskId;
 
+            const runData = taskRunMap.get(task.taskId);
+            const status = runData?.status;
+
+            let borderColor = isSelected ? '#ffffff' : '#333333';
+            let strokeWidth = isSelected ? '2' : '1';
+            let strokeDasharray = 'none';
+
+            if (status === 'RUNNING') {
+              borderColor = '#ffffff';
+              strokeWidth = '2';
+            } else if (status === 'SUCCEEDED') {
+              borderColor = '#aaaaaa';
+            } else if (status === 'FAILED') {
+              borderColor = '#ffffff';
+              strokeDasharray = '4 2';
+            } else if (status === 'CANCELLED') {
+              borderColor = '#555555';
+              strokeDasharray = '2 2';
+            }
+
             return (
               <g 
                 key={task.taskId} 
@@ -149,8 +179,9 @@ export function GraphCanvas({ tasks = [], onSelectTask, onUpdateTaskPosition, se
                   rx="3" 
                   ry="3"
                   fill="#171717"
-                  stroke={isSelected ? '#ffffff' : '#333333'}
-                  strokeWidth={isSelected ? '2' : '1'}
+                  stroke={borderColor}
+                  strokeWidth={strokeWidth}
+                  strokeDasharray={strokeDasharray}
                 />
 
                 {/* Left Accent Bar for Priority */}
@@ -162,6 +193,21 @@ export function GraphCanvas({ tasks = [], onSelectTask, onUpdateTaskPosition, se
                   rx="1"
                   fill={task.priority >= 8 ? '#ffffff' : (task.priority >= 5 ? '#888888' : '#444444')}
                 />
+
+                {/* Top Right Status Badge if in active run */}
+                {status && (
+                  <text
+                    x={NODE_WIDTH - 8}
+                    y="18"
+                    fill="#f5f5f5"
+                    fontSize="9"
+                    fontWeight="700"
+                    fontFamily="monospace"
+                    textAnchor="end"
+                  >
+                    [{status}]
+                  </text>
+                )}
 
                 {/* Node Title */}
                 <text 

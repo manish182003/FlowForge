@@ -116,3 +116,4 @@ In competitive programming, you may also see DFS cycle detection:
 
 If DFS encounters a neighbor colored `GRAY`, a **back-edge** exists, proving a cycle!
 Kahn's BFS is preferred in production schedulers because it also produces the topological ordering simultaneously in $O(V + E)$ without recursion stack overflow risks on deep graphs.
+

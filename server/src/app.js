@@ -3,6 +3,7 @@ const cors = require('cors');
 const env = require('./config/env');
 const healthRoutes = require('./routes/health.routes');
 const workflowRoutes = require('./routes/workflow.routes');
+const runRoutes = require('./routes/run.routes');
 const notFoundHandler = require('./middleware/notFoundHandler');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -24,6 +25,7 @@ function createApp() {
   // Mount API routes
   app.use('/api', healthRoutes);
   app.use('/api', workflowRoutes);
+  app.use('/api', runRoutes);
 
   // 404 Handler for unmatched routes
   app.use(notFoundHandler);
