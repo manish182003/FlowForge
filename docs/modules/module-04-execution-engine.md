@@ -75,3 +75,4 @@ Client Vite bundle successfully generated:
 ```bash
 vite build -> dist/assets/index-D2avfCus.js (167.80 kB) in 868ms
 ```
+

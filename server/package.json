@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "worker": "node src/workers/worker.js",
     "test": "jest --runInBand",
     "test:watch": "jest --watch"
   },

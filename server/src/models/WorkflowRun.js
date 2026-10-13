@@ -62,3 +62,4 @@ workflowRunSchema.index({ workflowId: 1, createdAt: -1 });
 const WorkflowRun = mongoose.model('WorkflowRun', workflowRunSchema);
 
 module.exports = WorkflowRun;
+
