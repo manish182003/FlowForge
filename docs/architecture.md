@@ -55,3 +55,4 @@ graph TD
 3. **Strict Monochrome Design Tokens**:
    - *Decision*: CSS variables for neutral grayscale tones only.
    - *Rationale*: Creates a professional developer-tool aesthetic reminiscent of terminal tools and technical CAD workstations, eliminating SaaS design bloat.
+

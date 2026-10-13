@@ -13,3 +13,4 @@ This roadmap governs the incremental implementation of FlowForge. Each phase mus
 | **07** | **Failure Injection & Recovery** | Worker crash tests, Redis network partition recovery, reconciliation outbox for pending jobs, lease expiration tests. | *PENDING* |
 | **08** | **AI Workflow Generator (Optional)** | LLM natural-language workflow generation with strict server-side AST schema validation and manual user approval. | *PENDING* |
 | **09** | **Benchmarking & Performance** | Repeatable load test script measuring throughput, task latency, queue depth under load, and recovery metrics. | *PENDING* |
+

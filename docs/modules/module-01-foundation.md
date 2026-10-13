@@ -71,3 +71,4 @@ Tests:       3 passed, 3 total
 ## 5. Known Limitations & Next Steps
 - Database is currently checked via Mongoose readyState; workflow collections will be introduced in Module 02.
 - Redis and BullMQ connection wiring will be introduced alongside task execution queues in Module 04.
+
