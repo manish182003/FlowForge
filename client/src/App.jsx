@@ -5,6 +5,7 @@ import { GraphCanvas } from './components/GraphCanvas';
 import { TaskModal } from './components/TaskModal';
 import { ChaosPanel } from './components/ChaosPanel';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import ConsistentHashVisualizer from './components/ConsistentHashVisualizer';
 import { LogViewer } from './components/LogViewer';
 import { useWebSocket } from './hooks/useWebSocket';
 import { fetchHealth } from './services/api';
@@ -92,6 +93,7 @@ export function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isChaosModalOpen, setIsChaosModalOpen] = useState(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isClusterModalOpen, setIsClusterModalOpen] = useState(false);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -563,6 +565,13 @@ export function App() {
                       >
                         ⚡ Chaos & Fleet
                       </button>
+                      <button 
+                        className="btn btn-secondary"
+                        onClick={() => setIsClusterModalOpen(true)}
+                        title="Consistent Hash Ring [0, 2^32-1], Virtual Nodes, and Migration Simulator"
+                      >
+                        🔄 Cluster Ring
+                      </button>
                     </div>
                   </div>
 
@@ -720,8 +729,8 @@ export function App() {
                   </div>
                   <div className="stat-card">
                     <span className="stat-label">Module Progress</span>
-                    <span className="stat-value">MODULE 08</span>
-                    <span className="stat-hint">Analytics & Critical Path</span>
+                    <span className="stat-value">MODULE 09</span>
+                    <span className="stat-hint">Consistent Hashing & Sharding</span>
                   </div>
                 </div>
               </div>
@@ -781,6 +790,11 @@ export function App() {
                       <td>Execution Analytics: Makespan, Parallel Speedup, Critical Path Highlighting</td>
                       <td>COMPLETED</td>
                     </tr>
+                    <tr>
+                      <td>09</td>
+                      <td>Consistent Hashing: Hash Ring [0, 2³²-1], Virtual Nodes, lower_bound, Avalanche Simulator</td>
+                      <td>COMPLETED</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -817,9 +831,15 @@ export function App() {
         onRefresh={() => handleOpenAnalytics()}
       />
 
+      {/* Consistent Hash Ring & Cluster Sharding Visualizer */}
+      <ConsistentHashVisualizer
+        isOpen={isClusterModalOpen}
+        onClose={() => setIsClusterModalOpen(false)}
+      />
+
       <footer className="app-footer">
         <span>FlowForge Distributed Scheduler</span>
-        <span>Module 08: Execution Analytics & Critical Path Dashboard</span>
+        <span>Module 09: Consistent Hashing & Cluster Sharding</span>
       </footer>
     </div>
   );
