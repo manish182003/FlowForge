@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Workflow = require('../models/Workflow');
 const { workflowCreateSchema, workflowUpdateSchema } = require('../schemas/workflow.schema');
+const { workflows: inMemoryWorkflows } = require('../storage/inMemoryStore');
 
 /**
  * Validates if a string is a valid MongoDB ObjectId.
@@ -46,13 +47,18 @@ async function createWorkflow(req, res, next) {
     }
 
     if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
-      return res.status(503).json({
-        success: false,
-        error: {
-          message: 'Database is currently offline. Set MONGODB_URI (e.g. MongoDB Atlas) in .env to persist workflows.',
-          code: 'DATABASE_UNAVAILABLE',
-          statusCode: 503
-        }
+      const memoryWf = {
+        _id: new mongoose.Types.ObjectId().toString(),
+        ...parseResult.data,
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      inMemoryWorkflows.set(memoryWf._id, memoryWf);
+      return res.status(201).json({
+        success: true,
+        data: memoryWf,
+        notice: 'Workflow saved in-memory (database offline).'
       });
     }
 
@@ -75,14 +81,15 @@ async function createWorkflow(req, res, next) {
 async function listWorkflows(req, res, next) {
   try {
     if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+      const list = Array.from(inMemoryWorkflows.values()).reverse();
       return res.status(200).json({
         success: true,
-        data: [],
+        data: list,
         pagination: {
           page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0
+          limit: 50,
+          total: list.length,
+          totalPages: 1
         },
         notice: 'Database offline. Operating in in-memory degraded mode.'
       });
@@ -133,6 +140,21 @@ async function getWorkflowById(req, res, next) {
           statusCode: 400
         }
       });
+    }
+
+    if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+      const workflow = inMemoryWorkflows.get(id);
+      if (!workflow) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: `Workflow not found with ID: ${id}`,
+            code: 'NOT_FOUND',
+            statusCode: 404
+          }
+        });
+      }
+      return res.status(200).json({ success: true, data: workflow });
     }
 
     const workflow = await Workflow.findById(id).lean();
@@ -188,6 +210,27 @@ async function updateWorkflow(req, res, next) {
       });
     }
 
+    if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+      if (!inMemoryWorkflows.has(id)) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: `Workflow not found with ID: ${id}`,
+            code: 'NOT_FOUND',
+            statusCode: 404
+          }
+        });
+      }
+      const existing = inMemoryWorkflows.get(id);
+      const updated = {
+        ...existing,
+        ...parseResult.data,
+        updatedAt: new Date().toISOString()
+      };
+      inMemoryWorkflows.set(id, updated);
+      return res.status(200).json({ success: true, data: updated });
+    }
+
     const updatedWorkflow = await Workflow.findByIdAndUpdate(
       id,
       { $set: parseResult.data },
@@ -230,6 +273,24 @@ async function deleteWorkflow(req, res, next) {
           code: 'INVALID_ID',
           statusCode: 400
         }
+      });
+    }
+
+    if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+      if (!inMemoryWorkflows.has(id)) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: `Workflow not found with ID: ${id}`,
+            code: 'NOT_FOUND',
+            statusCode: 404
+          }
+        });
+      }
+      inMemoryWorkflows.delete(id);
+      return res.status(200).json({
+        success: true,
+        message: `Workflow ${id} successfully deleted`
       });
     }
 

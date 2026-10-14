@@ -46,6 +46,10 @@ export function useWebSocket({
   };
 
   const getWsUrl = useCallback(() => {
+    // Connect directly to backend port 5000 in Vite dev mode to avoid dev-server proxy socket aborts
+    if (window.location.hostname === 'localhost' && window.location.port === '5173') {
+      return 'ws://localhost:5000/ws';
+    }
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     // Connect to same host via Vite proxy in dev or direct in prod
     return `${protocol}//${window.location.host}/ws`;
