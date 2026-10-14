@@ -60,7 +60,7 @@
   --space-12: 3rem;
 
   /* Layout */
-  --max-width: 1200px;
+  --max-width: min(1600px, 96vw);
   --radius-sm: 2px;
   --radius-md: 4px;
 }

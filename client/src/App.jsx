@@ -22,63 +22,169 @@ import {
   cancelRun
 } from './services/workflowApi';
 
-// Sample blueprint for quick onboarding and testing
-const SAMPLE_WORKFLOW = {
-  name: 'ETL Pipeline Demo',
-  description: 'Download CSV -> Validate Schema -> Transform Records -> Generate Report',
-  tasks: [
-    {
-      taskId: 'download_data',
-      name: 'Download CSV Data',
-      type: 'http_request',
-      priority: 8,
-      dependencies: [],
-      retryPolicy: { maxRetries: 3, backoffMs: 1000 },
-      input: { url: 'https://example.com/data.csv' },
-      uiPosition: { x: 50, y: 180 }
-    },
-    {
-      taskId: 'validate_schema',
-      name: 'Validate CSV Format',
-      type: 'file_validation',
-      priority: 7,
-      dependencies: ['download_data'],
-      retryPolicy: { maxRetries: 2, backoffMs: 1000 },
-      input: { format: 'csv', strict: true },
-      uiPosition: { x: 300, y: 100 }
-    },
-    {
-      taskId: 'sanitize_rows',
-      name: 'Sanitize Bad Rows',
-      type: 'data_transformation',
-      priority: 5,
-      dependencies: ['download_data'],
-      retryPolicy: { maxRetries: 2, backoffMs: 1000 },
-      input: { op: 'clean_nulls' },
-      uiPosition: { x: 300, y: 260 }
-    },
-    {
-      taskId: 'aggregate_metrics',
-      name: 'Transform & Aggregate',
-      type: 'data_transformation',
-      priority: 6,
-      dependencies: ['validate_schema', 'sanitize_rows'],
-      retryPolicy: { maxRetries: 3, backoffMs: 2000 },
-      input: { groupBy: 'region' },
-      uiPosition: { x: 560, y: 180 }
-    },
-    {
-      taskId: 'export_report',
-      name: 'Generate Final PDF',
-      type: 'report_generation',
-      priority: 9,
-      dependencies: ['aggregate_metrics'],
-      retryPolicy: { maxRetries: 1, backoffMs: 5000 },
-      input: { format: 'pdf' },
-      uiPosition: { x: 820, y: 180 }
-    }
-  ]
+// Sample blueprints for quick onboarding, live testing, and system design demonstration
+const BLUEPRINT_TEMPLATES = {
+  etl: {
+    name: 'ETL Pipeline Demo',
+    description: 'Download CSV -> Validate Schema -> Transform Records -> Generate Report',
+    tasks: [
+      {
+        taskId: 'download_data',
+        name: 'Download CSV Data',
+        type: 'http_request',
+        priority: 8,
+        dependencies: [],
+        retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+        input: { url: 'https://example.com/data.csv' },
+        uiPosition: { x: 60, y: 190 }
+      },
+      {
+        taskId: 'validate_schema',
+        name: 'Validate CSV Format',
+        type: 'file_validation',
+        priority: 7,
+        dependencies: ['download_data'],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { format: 'csv', strict: true },
+        uiPosition: { x: 340, y: 100 }
+      },
+      {
+        taskId: 'sanitize_rows',
+        name: 'Sanitize Bad Rows',
+        type: 'data_transformation',
+        priority: 5,
+        dependencies: ['download_data'],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { op: 'clean_nulls' },
+        uiPosition: { x: 340, y: 280 }
+      },
+      {
+        taskId: 'aggregate_metrics',
+        name: 'Transform & Aggregate',
+        type: 'data_transformation',
+        priority: 6,
+        dependencies: ['validate_schema', 'sanitize_rows'],
+        retryPolicy: { maxRetries: 3, backoffMs: 2000 },
+        input: { groupBy: 'region' },
+        uiPosition: { x: 620, y: 190 }
+      },
+      {
+        taskId: 'export_report',
+        name: 'Generate Final PDF',
+        type: 'report_generation',
+        priority: 9,
+        dependencies: ['aggregate_metrics'],
+        retryPolicy: { maxRetries: 1, backoffMs: 5000 },
+        input: { format: 'pdf' },
+        uiPosition: { x: 900, y: 190 }
+      }
+    ]
+  },
+  diamond: {
+    name: 'Parallel Diamond Fan-Out',
+    description: 'Ingest Event -> 3 Concurrent Workers (Inventory, Fraud, Tax) -> Join Settlement',
+    tasks: [
+      {
+        taskId: 'ingest_order',
+        name: 'Ingest Order Event',
+        type: 'http_request',
+        priority: 8,
+        dependencies: [],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { url: 'https://example.com/api/order' },
+        uiPosition: { x: 60, y: 190 }
+      },
+      {
+        taskId: 'check_inventory',
+        name: 'Check Warehouse Stock',
+        type: 'simulated',
+        priority: 7,
+        dependencies: ['ingest_order'],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { simulateDelayMs: 600 },
+        uiPosition: { x: 340, y: 70 }
+      },
+      {
+        taskId: 'fraud_check',
+        name: 'Run ML Fraud Model',
+        type: 'simulated',
+        priority: 9,
+        dependencies: ['ingest_order'],
+        retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+        input: { simulateDelayMs: 900 },
+        uiPosition: { x: 340, y: 190 }
+      },
+      {
+        taskId: 'tax_calc',
+        name: 'Calculate Regional Tax',
+        type: 'data_transformation',
+        priority: 6,
+        dependencies: ['ingest_order'],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { op: 'calculate_tax' },
+        uiPosition: { x: 340, y: 310 }
+      },
+      {
+        taskId: 'payment_settlement',
+        name: 'Capture Payment & Join',
+        type: 'simulated',
+        priority: 10,
+        dependencies: ['check_inventory', 'fraud_check', 'tax_calc'],
+        retryPolicy: { maxRetries: 2, backoffMs: 2000 },
+        input: { simulateDelayMs: 1200 },
+        uiPosition: { x: 620, y: 190 }
+      },
+      {
+        taskId: 'emit_receipt',
+        name: 'Generate Customer Receipt',
+        type: 'report_generation',
+        priority: 5,
+        dependencies: ['payment_settlement'],
+        retryPolicy: { maxRetries: 1, backoffMs: 1000 },
+        input: { format: 'pdf' },
+        uiPosition: { x: 900, y: 190 }
+      }
+    ]
+  },
+  retry: {
+    name: 'Fault-Tolerant Resilience Loop',
+    description: 'Demonstrates exponential backoff retry when a worker encounters transient failure',
+    tasks: [
+      {
+        taskId: 'init_connection',
+        name: 'Initialize Remote Session',
+        type: 'simulated',
+        priority: 8,
+        dependencies: [],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { simulateDelayMs: 400 },
+        uiPosition: { x: 80, y: 170 }
+      },
+      {
+        taskId: 'flaky_fetch',
+        name: 'Flaky Remote Ingestion',
+        type: 'simulated',
+        priority: 7,
+        dependencies: ['init_connection'],
+        retryPolicy: { maxRetries: 3, backoffMs: 1500 },
+        input: { failCount: 2, simulateDelayMs: 800 },
+        uiPosition: { x: 380, y: 170 }
+      },
+      {
+        taskId: 'finalize_sync',
+        name: 'Persist Synced Records',
+        type: 'report_generation',
+        priority: 6,
+        dependencies: ['flaky_fetch'],
+        retryPolicy: { maxRetries: 2, backoffMs: 1000 },
+        input: { format: 'json' },
+        uiPosition: { x: 680, y: 170 }
+      }
+    ]
+  }
 };
+
+const SAMPLE_WORKFLOW = BLUEPRINT_TEMPLATES.etl;
 
 export function App() {
   const [activeTab, setActiveTab] = useState('workflows');
@@ -184,13 +290,18 @@ export function App() {
     try {
       setLoading(true);
       const res = await fetchWorkflows();
-      setWorkflows(res.data || []);
-      if (res.data?.length > 0 && !selectedWorkflow) {
-        setSelectedWorkflow(res.data[0]);
-        loadRuns(res.data[0]._id, true);
+      const list = res.data || [];
+      setWorkflows(list);
+      if (list.length > 0 && !selectedWorkflow) {
+        setSelectedWorkflow(list[0]);
+        loadRuns(list[0]._id, true);
+      } else if (!selectedWorkflow) {
+        setSelectedWorkflow(JSON.parse(JSON.stringify(SAMPLE_WORKFLOW)));
       }
     } catch (err) {
-      setBannerError('Failed to load workflows: ' + err.message);
+      if (!selectedWorkflow) {
+        setSelectedWorkflow(JSON.parse(JSON.stringify(SAMPLE_WORKFLOW)));
+      }
     } finally {
       setLoading(false);
     }
@@ -353,12 +464,15 @@ export function App() {
     setSelectedTaskId(null);
   };
 
-  // Load sample pipeline
-  const handleLoadSample = () => {
-    setSelectedWorkflow({ ...SAMPLE_WORKFLOW });
+  // Load blueprint template
+  const handleLoadTemplate = (templateKey = 'etl') => {
+    const template = BLUEPRINT_TEMPLATES[templateKey] || BLUEPRINT_TEMPLATES.etl;
+    setSelectedWorkflow(JSON.parse(JSON.stringify(template)));
     setSelectedTaskId(null);
-    showNotification('Sample ETL Pipeline loaded. Click "Save Workflow" to persist.');
+    showNotification(`Loaded blueprint: "${template.name}". Click "Save Workflow" to persist.`);
   };
+
+  const handleLoadSample = () => handleLoadTemplate('etl');
 
   // Delete active workflow
   const handleDeleteActiveWorkflow = async () => {
@@ -385,7 +499,15 @@ export function App() {
 
   return (
     <div className="app-container">
-      <Header isHealthy={isServerHealthy} serverStatus={healthData} wsConnected={isWsConnected} />
+      <Header 
+        isHealthy={isServerHealthy} 
+        serverStatus={healthData} 
+        wsConnected={isWsConnected}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenChaos={() => setIsChaosModalOpen(true)}
+        onOpenCluster={() => setIsClusterModalOpen(true)}
+      />
 
       <main className="main-content">
         {/* Navigation Tabs */}
@@ -454,14 +576,35 @@ export function App() {
                 </div>
               </div>
 
-              {/* Quick Actions */}
+              {/* Pipeline Blueprints */}
               <div className="panel">
                 <div className="panel-header">
-                  <span className="panel-title">Templates</span>
+                  <span className="panel-title">Pipeline Blueprints</span>
                 </div>
-                <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button className="btn btn-secondary" onClick={handleLoadSample}>
-                    Load ETL Pipeline Demo
+                <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => handleLoadTemplate('etl')}
+                    style={{ textAlign: 'left', padding: '6px 8px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px' }}
+                  >
+                    <span><strong>1. ETL Pipeline</strong></span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Linear extraction, transform & join</span>
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => handleLoadTemplate('diamond')}
+                    style={{ textAlign: 'left', padding: '6px 8px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px' }}
+                  >
+                    <span><strong>2. Parallel Diamond</strong></span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>3x concurrent fan-out & join barrier</span>
+                  </button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => handleLoadTemplate('retry')}
+                    style={{ textAlign: 'left', padding: '6px 8px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px' }}
+                  >
+                    <span><strong>3. Resilience Loop</strong></span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Transient failure with backoff retry</span>
                   </button>
                 </div>
               </div>
@@ -586,6 +729,7 @@ export function App() {
                       setEditingTask(task);
                     }}
                     onUpdateTaskPosition={handleUpdateTaskPosition}
+                    onAutoLayoutTasks={() => showNotification('Topological auto-layout arranged DAG vertices in dependency order')}
                   />
 
                   {/* Active Run Execution Monitor */}
@@ -685,13 +829,21 @@ export function App() {
                 </div>
               ) : (
                 <div className="panel" style={{ padding: '60px 20px', textAlign: 'center' }}>
-                  <h3>No Workflow Selected</h3>
-                  <p style={{ color: '#888888', margin: '12px 0 24px' }}>
-                    Select an existing workflow from the sidebar or load the ETL sample template.
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Select or Initialize a Workflow</h3>
+                  <p style={{ color: 'var(--text-secondary)', margin: '0 0 24px', fontSize: 'var(--text-sm)' }}>
+                    Pick an existing workflow from the sidebar or choose an architectural blueprint to inspect on the DAG canvas:
                   </p>
-                  <button className="btn btn-primary" onClick={handleLoadSample}>
-                    Load Sample Pipeline
-                  </button>
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button className="btn btn-primary" onClick={() => handleLoadTemplate('etl')}>
+                      Load ETL Pipeline
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => handleLoadTemplate('diamond')}>
+                      Load Parallel Diamond DAG
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => handleLoadTemplate('retry')}>
+                      Load Resilience Loop
+                    </button>
+                  </div>
                 </div>
               )}
             </section>

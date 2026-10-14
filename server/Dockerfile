@@ -25,3 +25,4 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 # Default command starts the API server; can be overridden in docker-compose for worker process
 CMD ["node", "src/server.js"]
+
