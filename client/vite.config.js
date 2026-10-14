@@ -24,13 +24,23 @@ export default defineConfig({
       '/ws': {
         target: 'ws://localhost:5000',
         ws: true,
+        rewriteWsOrigin: true,
         configure: (proxy) => {
           proxy.on('error', (err) => {
             // Silently suppress expected socket aborts/disconnects when server is offline or reconnecting
             if (['ECONNRESET', 'ECONNABORTED', 'ECONNREFUSED', 'EPIPE'].includes(err.code)) {
               return;
             }
-            console.warn('[Vite WS Proxy Notice]', err.message);
+          });
+          proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+            socket.on('error', () => {
+              // Silently absorb socket aborts on client browser reload
+            });
+          });
+          proxy.on('open', (proxySocket) => {
+            proxySocket.on('error', () => {
+              // Silently absorb socket aborts on upstream reload
+            });
           });
         }
       }

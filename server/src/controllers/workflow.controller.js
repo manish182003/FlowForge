@@ -45,6 +45,17 @@ async function createWorkflow(req, res, next) {
       });
     }
 
+    if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          message: 'Database is currently offline. Set MONGODB_URI (e.g. MongoDB Atlas) in .env to persist workflows.',
+          code: 'DATABASE_UNAVAILABLE',
+          statusCode: 503
+        }
+      });
+    }
+
     const workflow = new Workflow(parseResult.data);
     const savedWorkflow = await workflow.save();
 
@@ -63,6 +74,20 @@ async function createWorkflow(req, res, next) {
  */
 async function listWorkflows(req, res, next) {
   try {
+    if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
+        },
+        notice: 'Database offline. Operating in in-memory degraded mode.'
+      });
+    }
+
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
     const skip = (page - 1) * limit;

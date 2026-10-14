@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const WorkerHeartbeat = require('../models/WorkerHeartbeat');
 const TaskRun = require('../models/TaskRun');
 const WorkflowRun = require('../models/WorkflowRun');
@@ -44,6 +45,11 @@ async function recordReaperLog(runId, taskId, level, message, details = null) {
  * @returns {Promise<{ deadWorkersCount: number, reclaimedTasksCount: number }>}
  */
 async function reapOrphanedTasks(leaseTimeoutMs = 15000) {
+  // In development/production, if database is disconnected, skip orphan sweep
+  if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState !== 1) {
+    return { deadWorkersCount: 0, reclaimedTasksCount: 0 };
+  }
+
   const cutoffTime = new Date(Date.now() - leaseTimeoutMs);
 
   // 1. Identify workers whose heartbeat has expired
@@ -260,7 +266,9 @@ function startReaper(intervalMs = 10000, leaseTimeoutMs = 15000) {
   console.log(`[Reaper] Watchdog service started (interval: ${intervalMs}ms, lease timeout: ${leaseTimeoutMs}ms).`);
   reaperInterval = setInterval(async () => {
     try {
-      await reapOrphanedTasks(leaseTimeoutMs);
+      if (mongoose.connection.readyState === 1) {
+        await reapOrphanedTasks(leaseTimeoutMs);
+      }
     } catch (err) {
       console.error('[Reaper] Error during orphan reclamation cycle:', err.message);
     }

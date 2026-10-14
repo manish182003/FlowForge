@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+// Fail fast when disconnected: prevents operations from buffering and timing out after 10s
+mongoose.set('bufferCommands', false);
+mongoose.set('bufferTimeoutMS', 1000);
+
 const readyStates = {
   0: 'disconnected',
   1: 'connected',
