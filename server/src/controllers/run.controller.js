@@ -30,7 +30,7 @@ function simulateInMemoryExecution(runId, workflowId) {
     queued.forEach(task => {
       task.status = 'RUNNING';
       task.startedAt = new Date().toISOString();
-      broadcastEvent('TASK_STATE_CHANGE', {
+      broadcastEvent('TASK_STATE_CHANGED', {
         runId,
         taskId: task.taskId,
         taskRunId: task._id,
@@ -55,7 +55,7 @@ function simulateInMemoryExecution(runId, workflowId) {
         task.completedAt = new Date().toISOString();
         workflowRun.tasksCompleted = (workflowRun.tasksCompleted || 0) + 1;
 
-        broadcastEvent('TASK_STATE_CHANGE', {
+        broadcastEvent('TASK_STATE_CHANGED', {
           runId,
           taskId: task.taskId,
           taskRunId: task._id,
@@ -66,7 +66,7 @@ function simulateInMemoryExecution(runId, workflowId) {
           runId,
           taskId: task.taskId,
           level: 'info',
-          message: `Task [${task.name}] completed successfully (700ms)`,
+          message: `Task [${task.name}] completed successfully (750ms)`,
           timestamp: new Date().toISOString()
         };
         if (inMemoryStore.executionLogs.has(runId)) {
@@ -80,7 +80,7 @@ function simulateInMemoryExecution(runId, workflowId) {
           const deps = p.dependencies || [];
           if (deps.every(d => succeededTaskIds.has(d))) {
             p.status = 'QUEUED';
-            broadcastEvent('TASK_STATE_CHANGE', {
+            broadcastEvent('TASK_STATE_CHANGED', {
               runId,
               taskId: p.taskId,
               taskRunId: p._id,
@@ -92,7 +92,7 @@ function simulateInMemoryExecution(runId, workflowId) {
         if (runTasks.every(t => t.status === 'SUCCEEDED')) {
           workflowRun.status = 'SUCCEEDED';
           workflowRun.completedAt = new Date().toISOString();
-          broadcastEvent('WORKFLOW_STATE_CHANGE', {
+          broadcastEvent('WORKFLOW_STATE_CHANGED', {
             runId,
             status: 'SUCCEEDED'
           });
@@ -109,13 +109,13 @@ function simulateInMemoryExecution(runId, workflowId) {
           }
           broadcastEvent('LOG_MESSAGE', doneLog);
         } else {
-          runNextStep();
+          setTimeout(runNextStep, 400);
         }
-      }, 700);
+      }, 750);
     });
   }
 
-  setTimeout(runNextStep, 200);
+  setTimeout(runNextStep, 400);
 }
 
 /**
@@ -330,7 +330,7 @@ async function cancelRun(req, res, next) {
       }
       workflowRun.status = 'CANCELLED';
       workflowRun.completedAt = new Date().toISOString();
-      broadcastEvent('WORKFLOW_STATE_CHANGE', { runId, status: 'CANCELLED' });
+      broadcastEvent('WORKFLOW_STATE_CHANGED', { runId, status: 'CANCELLED' });
       return res.status(200).json({ success: true, data: workflowRun });
     }
 

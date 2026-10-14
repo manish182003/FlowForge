@@ -95,9 +95,9 @@ export function useWebSocket({
         const data = JSON.parse(event.data);
         const { type, payload } = data;
 
-        if (type === 'TASK_STATE_CHANGED' && callbacksRef.current.onTaskStateChange) {
+        if ((type === 'TASK_STATE_CHANGED' || type === 'TASK_STATE_CHANGE') && callbacksRef.current.onTaskStateChange) {
           callbacksRef.current.onTaskStateChange(payload);
-        } else if (type === 'WORKFLOW_STATE_CHANGED' && callbacksRef.current.onWorkflowStateChange) {
+        } else if ((type === 'WORKFLOW_STATE_CHANGED' || type === 'WORKFLOW_STATE_CHANGE') && callbacksRef.current.onWorkflowStateChange) {
           callbacksRef.current.onWorkflowStateChange(payload);
         } else if (type === 'LOG_MESSAGE' && callbacksRef.current.onLogMessage) {
           callbacksRef.current.onLogMessage(payload);

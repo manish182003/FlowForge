@@ -233,6 +233,14 @@ export function App() {
           workflowRun: { ...prev.workflowRun, ...payload }
         };
       });
+      if (payload.status === 'SUCCEEDED') {
+        const targetRunId = payload.runId || activeRun?.workflowRun?._id;
+        if (targetRunId) {
+          fetchRunAnalytics(targetRunId)
+            .then(aRes => setAnalyticsData(aRes.data))
+            .catch(() => {});
+        }
+      }
       // Refresh run history status
       if (selectedWorkflow?._id) {
         loadRuns(selectedWorkflow._id, false);
@@ -254,6 +262,38 @@ export function App() {
       }
     }
   });
+
+  // Active run polling reconciler: guarantees live state updates during execution
+  useEffect(() => {
+    const currentRunId = activeRun?.workflowRun?._id;
+    const currentStatus = activeRun?.workflowRun?.status;
+    if (!currentRunId || (currentStatus !== 'RUNNING' && currentStatus !== 'QUEUED')) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const [snapshotRes, logsRes] = await Promise.all([
+          fetchRunSnapshot(currentRunId),
+          fetchRunLogs(currentRunId)
+        ]);
+        if (snapshotRes?.data) {
+          setActiveRun(snapshotRes.data);
+          if (logsRes?.data?.length > 0) {
+            setExecutionLogs(logsRes.data);
+          }
+          if (snapshotRes.data.workflowRun?.status === 'SUCCEEDED') {
+            fetchRunAnalytics(currentRunId)
+              .then(aRes => setAnalyticsData(aRes.data))
+              .catch(() => {});
+            if (selectedWorkflow?._id) {
+              loadRuns(selectedWorkflow._id, false);
+            }
+          }
+        }
+      } catch (_) {}
+    }, 800);
+
+    return () => clearInterval(interval);
+  }, [activeRun?.workflowRun?._id, activeRun?.workflowRun?.status]);
 
   // Fetch health and workflows on mount
   useEffect(() => {
