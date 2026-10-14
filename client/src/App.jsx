@@ -1,4 +1,3 @@
-import React, { useState, useEffect } from 'react';
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { StatusBadge } from './components/StatusBadge';
@@ -343,23 +342,10 @@ export function App() {
   const clientSimControllerRef = useRef(null);
 
   const handleRunWorkflow = async () => {
-    if (!selectedWorkflow?._id) {
-      showError('Please save the workflow first before executing.');
     if (!selectedWorkflow || !selectedWorkflow.tasks || selectedWorkflow.tasks.length === 0) {
       showError('Workflow has no tasks. Add at least one task or select a blueprint.');
       return;
     }
-    try {
-      setLoading(true);
-      setExecutionLogs([]);
-      const res = await triggerWorkflowRun(selectedWorkflow._id);
-      setActiveRun(res.data);
-      showNotification(`Execution triggered! Run ID: ${res.data.workflowRun._id}`);
-      loadRuns(selectedWorkflow._id, false);
-    } catch (err) {
-      showError('Failed to trigger execution: ' + err.message);
-    } finally {
-      setLoading(false);
 
     setExecutionLogs([]);
     let targetWorkflowId = selectedWorkflow._id;
@@ -776,12 +762,9 @@ export function App() {
                       <button 
                         className="btn btn-primary"
                         onClick={handleRunWorkflow}
-                        disabled={loading || !selectedWorkflow._id}
-                        title={!selectedWorkflow._id ? 'Save workflow first' : 'Execute workflow'}
                         disabled={loading || !selectedWorkflow || !selectedWorkflow.tasks || selectedWorkflow.tasks.length === 0}
                         title="Execute workflow"
                       >
-                        ▶ Run Workflow
                         {activeRun?.workflowRun?.status === 'RUNNING' ? '⏳ Running...' : '▶ Run Workflow'}
                       </button>
                       <button 
