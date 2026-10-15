@@ -14,3 +14,4 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$cl
 
 Write-Host "`nServices launching in separate terminals!" -ForegroundColor Yellow
 Write-Host "Open your browser at: http://localhost:5173/" -ForegroundColor Yellow
+

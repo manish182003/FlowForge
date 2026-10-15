@@ -33,6 +33,8 @@ export function runClientSimulation({
       status: isRoot ? 'QUEUED' : 'PENDING',
       priority: task.priority || 5,
       dependencies: task.dependencies || [],
+      input: task.input || {},
+      retryPolicy: task.retryPolicy || { maxRetries: 3, backoffMs: 1000 },
       retryCount: 0
     };
   });
@@ -105,6 +107,73 @@ export function runClientSimulation({
       const handle = setTimeout(() => {
         if (cancelled) return;
 
+        const rawInput = task.input || {};
+        const failCount = rawInput.failCount || rawInput.failAttempts || 0;
+        const shouldFail = rawInput.shouldFail === true;
+
+        // 1. Transient failure simulation with backoff retry
+        if (failCount > 0 && task.retryCount < failCount) {
+          task.retryCount += 1;
+          task.status = 'RETRY_WAIT';
+          onTaskStateChange?.({
+            runId,
+            taskId: task.taskId,
+            taskRunId: task._id,
+            status: 'RETRY_WAIT',
+            retryCount: task.retryCount
+          });
+
+          onLogMessage?.({
+            runId,
+            taskId: task.taskId,
+            level: 'warn',
+            message: `[Fault Simulation] Transient failure on attempt ${task.retryCount} of ${failCount}. Entering RETRY_WAIT with backoff.`,
+            timestamp: new Date().toISOString()
+          });
+
+          const retryHandle = setTimeout(() => {
+            if (cancelled) return;
+            task.status = 'QUEUED';
+            onTaskStateChange?.({
+              runId,
+              taskId: task.taskId,
+              taskRunId: task._id,
+              status: 'QUEUED'
+            });
+            setTimeout(step, 200);
+          }, 1100);
+          timeoutHandles.push(retryHandle);
+          return;
+        }
+
+        // 2. Intentional permanent failure simulation
+        if (shouldFail) {
+          task.status = 'FAILED';
+          task.completedAt = new Date().toISOString();
+          onTaskStateChange?.({
+            runId,
+            taskId: task.taskId,
+            taskRunId: task._id,
+            status: 'FAILED'
+          });
+
+          onLogMessage?.({
+            runId,
+            taskId: task.taskId,
+            level: 'error',
+            message: `Task [${task.name}] execution failed (simulated failure condition)`,
+            timestamp: new Date().toISOString()
+          });
+
+          onWorkflowStateChange?.({
+            ...workflowRun,
+            status: 'FAILED',
+            completedAt: new Date().toISOString()
+          });
+          return;
+        }
+
+        // 3. Normal Success
         task.status = 'SUCCEEDED';
         task.completedAt = new Date().toISOString();
         workflowRun.tasksCompleted += 1;

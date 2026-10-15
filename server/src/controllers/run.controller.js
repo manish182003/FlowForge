@@ -51,6 +51,80 @@ function simulateInMemoryExecution(runId, workflowId) {
 
       setTimeout(() => {
         if (workflowRun.status !== 'RUNNING') return;
+
+        const rawInput = task.input || {};
+        const failCount = rawInput.failCount || rawInput.failAttempts || 0;
+        const shouldFail = rawInput.shouldFail === true;
+
+        // 1. Transient failure simulation with backoff retry
+        if (failCount > 0 && task.retryCount < failCount) {
+          task.retryCount += 1;
+          task.status = 'RETRY_WAIT';
+          broadcastEvent('TASK_STATE_CHANGED', {
+            runId,
+            taskId: task.taskId,
+            taskRunId: task._id,
+            status: 'RETRY_WAIT',
+            retryCount: task.retryCount
+          });
+          const warnLog = {
+            runId,
+            taskId: task.taskId,
+            level: 'warn',
+            message: `[Fault Simulation] Transient failure on attempt ${task.retryCount} of ${failCount}. Entering RETRY_WAIT with exponential backoff.`,
+            timestamp: new Date().toISOString()
+          };
+          if (inMemoryStore.executionLogs.has(runId)) {
+            inMemoryStore.executionLogs.get(runId).push(warnLog);
+          }
+          broadcastEvent('LOG_MESSAGE', warnLog);
+
+          setTimeout(() => {
+            if (workflowRun.status !== 'RUNNING') return;
+            task.status = 'QUEUED';
+            broadcastEvent('TASK_STATE_CHANGED', {
+              runId,
+              taskId: task.taskId,
+              taskRunId: task._id,
+              status: 'QUEUED'
+            });
+            setTimeout(runNextStep, 300);
+          }, 1100);
+          return;
+        }
+
+        // 2. Intentional permanent failure simulation
+        if (shouldFail) {
+          task.status = 'FAILED';
+          task.completedAt = new Date().toISOString();
+          broadcastEvent('TASK_STATE_CHANGED', {
+            runId,
+            taskId: task.taskId,
+            taskRunId: task._id,
+            status: 'FAILED'
+          });
+          const errLog = {
+            runId,
+            taskId: task.taskId,
+            level: 'error',
+            message: `Task [${task.name}] execution failed (simulated failure condition)`,
+            timestamp: new Date().toISOString()
+          };
+          if (inMemoryStore.executionLogs.has(runId)) {
+            inMemoryStore.executionLogs.get(runId).push(errLog);
+          }
+          broadcastEvent('LOG_MESSAGE', errLog);
+
+          workflowRun.status = 'FAILED';
+          workflowRun.completedAt = new Date().toISOString();
+          broadcastEvent('WORKFLOW_STATE_CHANGED', {
+            runId,
+            status: 'FAILED'
+          });
+          return;
+        }
+
+        // 3. Normal Success
         task.status = 'SUCCEEDED';
         task.completedAt = new Date().toISOString();
         workflowRun.tasksCompleted = (workflowRun.tasksCompleted || 0) + 1;
@@ -171,6 +245,8 @@ async function triggerWorkflowRun(req, res, next) {
           priority: task.priority || 5,
           retryCount: 0,
           dependencies: task.dependencies || [],
+          input: task.input || {},
+          retryPolicy: task.retryPolicy || { maxRetries: 3, backoffMs: 1000 },
           uiPosition: task.uiPosition
         };
         inMemoryStore.taskRuns.set(tr._id, tr);
