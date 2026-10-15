@@ -11,36 +11,14 @@ export default defineConfig({
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on('error', (err, req, res) => {
-            if (err.code === 'ECONNREFUSED' && res && !res.headersSent) {
+            // Gracefully handle any connection errors (ECONNREFUSED, AggregateError, etc.)
+            if (res && typeof res.writeHead === 'function' && !res.headersSent) {
               res.writeHead(503, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ 
                 success: false, 
-                error: 'Backend API server is not running on port 5000. Start it with `npm run dev` in /server' 
+                error: 'Backend API server is offline on port 5000. Start it with `npm run dev` in /server' 
               }));
             }
-          });
-        }
-      },
-      '/ws': {
-        target: 'ws://localhost:5000',
-        ws: true,
-        rewriteWsOrigin: true,
-        configure: (proxy) => {
-          proxy.on('error', (err) => {
-            // Silently suppress expected socket aborts/disconnects when server is offline or reconnecting
-            if (['ECONNRESET', 'ECONNABORTED', 'ECONNREFUSED', 'EPIPE'].includes(err.code)) {
-              return;
-            }
-          });
-          proxy.on('proxyReqWs', (proxyReq, req, socket) => {
-            socket.on('error', () => {
-              // Silently absorb socket aborts on client browser reload
-            });
-          });
-          proxy.on('open', (proxySocket) => {
-            proxySocket.on('error', () => {
-              // Silently absorb socket aborts on upstream reload
-            });
           });
         }
       }

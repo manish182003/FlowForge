@@ -269,18 +269,24 @@ export function App() {
     const currentStatus = activeRun?.workflowRun?.status;
     if (!currentRunId || (currentStatus !== 'RUNNING' && currentStatus !== 'QUEUED')) return;
 
+    let consecutiveFailures = 0;
     const interval = setInterval(async () => {
+      if (consecutiveFailures >= 3) {
+        // Stop polling if backend server is offline or unreachable
+        return;
+      }
       try {
         const [snapshotRes, logsRes] = await Promise.all([
           fetchRunSnapshot(currentRunId),
           fetchRunLogs(currentRunId)
         ]);
+        consecutiveFailures = 0;
         if (snapshotRes?.data) {
           setActiveRun(snapshotRes.data);
           if (logsRes?.data?.length > 0) {
             setExecutionLogs(logsRes.data);
           }
-          if (snapshotRes.data.workflowRun?.status === 'SUCCEEDED') {
+          if (snapshotRes.data.workflowRun?.status === 'SUCCEEDED' || snapshotRes.data.workflowRun?.status === 'FAILED') {
             fetchRunAnalytics(currentRunId)
               .then(aRes => setAnalyticsData(aRes.data))
               .catch(() => {});
@@ -289,8 +295,10 @@ export function App() {
             }
           }
         }
-      } catch (_) {}
-    }, 800);
+      } catch (_) {
+        consecutiveFailures += 1;
+      }
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [activeRun?.workflowRun?._id, activeRun?.workflowRun?.status]);
