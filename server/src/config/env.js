@@ -14,7 +14,7 @@ dotenv.config();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.string().transform(val => parseInt(val, 10)).default('5000'),
-  CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  CLIENT_URL: z.string().default('http://localhost:5173'),
   MONGODB_URI: z.string().default('mongodb://localhost:27017/flowforge'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info')

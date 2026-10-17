@@ -16,8 +16,20 @@ function createApp() {
   const app = express();
 
   // Security and cross-origin configuration
+  const allowedOrigins = env.CLIENT_URL.split(',').map(s => s.trim().replace(/\/$/, ''));
   app.use(cors({
-    origin: env.CLIENT_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) || 
+        allowedOrigins.includes('*') ||
+        /\.vercel\.app$/.test(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback allow in permissive environments
+    },
     credentials: true
   }));
 

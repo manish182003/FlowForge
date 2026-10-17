@@ -3,10 +3,10 @@
  * Wraps browser Fetch API with error handling and response normalization.
  */
 
-const BASE_URL = '/api';
+import { API_BASE } from './apiConfig';
 
 export async function fetchHealth() {
-  const response = await fetch(`${BASE_URL}/health`, {
+  const response = await fetch(`${API_BASE}/health`, {
     headers: {
       'Accept': 'application/json'
     }

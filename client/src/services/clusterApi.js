@@ -1,3 +1,5 @@
+import { API_BASE } from './apiConfig';
+
 /**
  * Client API utility for Consistent Hashing & Cluster Sharding.
  */
@@ -11,12 +13,12 @@ async function handleResponse(response) {
 }
 
 export async function fetchRingState() {
-  const res = await fetch('/api/cluster/ring');
+  const res = await fetch(`${API_BASE}/cluster/ring`);
   return handleResponse(res);
 }
 
 export async function addWorkerToRing(workerId, weight = 1) {
-  const res = await fetch('/api/cluster/ring/workers', {
+  const res = await fetch(`${API_BASE}/cluster/ring/workers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ workerId, weight })
@@ -25,14 +27,14 @@ export async function addWorkerToRing(workerId, weight = 1) {
 }
 
 export async function removeWorkerFromRing(workerId) {
-  const res = await fetch(`/api/cluster/ring/workers/${encodeURIComponent(workerId)}`, {
+  const res = await fetch(`${API_BASE}/cluster/ring/workers/${encodeURIComponent(workerId)}`, {
     method: 'DELETE'
   });
   return handleResponse(res);
 }
 
 export async function routeKeyOnRing(key) {
-  const res = await fetch('/api/cluster/ring/route', {
+  const res = await fetch(`${API_BASE}/cluster/ring/route`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ key })
@@ -41,7 +43,7 @@ export async function routeKeyOnRing(key) {
 }
 
 export async function simulateRingMigration(sampleSize = 500, targetWorkerId = 'worker-delta', action = 'add') {
-  const res = await fetch('/api/cluster/ring/simulate', {
+  const res = await fetch(`${API_BASE}/cluster/ring/simulate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sampleSize, targetWorkerId, action })
@@ -50,14 +52,14 @@ export async function simulateRingMigration(sampleSize = 500, targetWorkerId = '
 }
 
 export async function syncRingWorkers() {
-  const res = await fetch('/api/cluster/ring/sync', {
+  const res = await fetch(`${API_BASE}/cluster/ring/sync`, {
     method: 'POST'
   });
   return handleResponse(res);
 }
 
 export async function resetRingWorkers() {
-  const res = await fetch('/api/cluster/ring/reset', {
+  const res = await fetch(`${API_BASE}/cluster/ring/reset`, {
     method: 'POST'
   });
   return handleResponse(res);

@@ -46,12 +46,24 @@ export function useWebSocket({
   };
 
   const getWsUrl = useCallback(() => {
-    // Connect directly to backend port 5000 in Vite dev mode to avoid dev-server proxy socket aborts
+    // 1. Explicit WebSocket URL configured in production (e.g. Vercel env pointing to Render)
+    if (import.meta.env.VITE_WS_URL) {
+      const baseWs = import.meta.env.VITE_WS_URL.replace(/\/$/, '');
+      return baseWs.endsWith('/ws') ? baseWs : `${baseWs}/ws`;
+    }
+    // 2. Derive from VITE_API_URL if configured
+    if (import.meta.env.VITE_API_URL) {
+      const apiUrl = import.meta.env.VITE_API_URL.replace(/\/$/, '');
+      const wsProto = apiUrl.startsWith('https:') ? 'wss:' : 'ws:';
+      const host = apiUrl.replace(/^https?:\/\//, '');
+      return `${wsProto}//${host}/ws`;
+    }
+    // 3. Connect directly to backend port 5000 in Vite local dev mode
     if (window.location.hostname === 'localhost' && window.location.port === '5173') {
       return 'ws://localhost:5000/ws';
     }
+    // 4. Fallback to same host
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Connect to same host via Vite proxy in dev or direct in prod
     return `${protocol}//${window.location.host}/ws`;
   }, []);
 

@@ -1,3 +1,5 @@
+import { API_BASE } from './apiConfig';
+
 /**
  * Client API utility for Worker Fleet Health & Chaos Engineering.
  */
@@ -11,12 +13,12 @@ async function handleResponse(response) {
 }
 
 export async function fetchWorkers() {
-  const res = await fetch('/api/workers');
+  const res = await fetch(`${API_BASE}/workers`);
   return handleResponse(res);
 }
 
 export async function expireWorkerLease(workerId, pastMs = 60000) {
-  const res = await fetch('/api/chaos/expire-lease', {
+  const res = await fetch(`${API_BASE}/chaos/expire-lease`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ workerId, pastMs })
@@ -25,7 +27,7 @@ export async function expireWorkerLease(workerId, pastMs = 60000) {
 }
 
 export async function triggerReaperSweep(leaseTimeoutMs = 15000) {
-  const res = await fetch('/api/chaos/trigger-reaper', {
+  const res = await fetch(`${API_BASE}/chaos/trigger-reaper`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ leaseTimeoutMs })

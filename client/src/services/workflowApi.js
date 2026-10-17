@@ -1,7 +1,9 @@
+import { API_BASE } from './apiConfig';
+
 /**
  * Client API utility for Workflow CRUD operations.
  */
-const BASE_URL = '/api/workflows';
+const BASE_URL = `${API_BASE}/workflows`;
 
 async function handleResponse(response) {
   const json = await response.json();
@@ -61,12 +63,12 @@ export async function fetchWorkflowRuns(id) {
 }
 
 export async function fetchRunSnapshot(runId) {
-  const res = await fetch(`/api/runs/${runId}`);
+  const res = await fetch(`${API_BASE}/runs/${runId}`);
   return handleResponse(res);
 }
 
 export async function cancelRun(runId, reason) {
-  const res = await fetch(`/api/runs/${runId}/cancel`, {
+  const res = await fetch(`${API_BASE}/runs/${runId}/cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason })
@@ -75,12 +77,12 @@ export async function cancelRun(runId, reason) {
 }
 
 export async function fetchRunLogs(runId) {
-  const res = await fetch(`/api/runs/${runId}/logs`);
+  const res = await fetch(`${API_BASE}/runs/${runId}/logs`);
   return handleResponse(res);
 }
 
 export async function fetchRunAnalytics(runId) {
-  const res = await fetch(`/api/runs/${runId}/analytics`);
+  const res = await fetch(`${API_BASE}/runs/${runId}/analytics`);
   return handleResponse(res);
 }
 
